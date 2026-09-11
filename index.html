@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andre Store — Digital Products & Services</title>
+<meta name="description" content="Store produk digital dan jasa IT oleh Mohammad Andre Nur Ardiansyah. Source code, template, dan layanan konfigurasi jaringan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Lucide Icons (2026 standard) -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- GSAP untuk animasi -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+<!-- Lenis untuk smooth scroll -->
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+
+<link rel="stylesheet" href="store.css">
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-layer"></div>
+<canvas id="stars"></canvas>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-wrap">
+    <a href="#" class="brand">
+      <span class="brand-dot"></span>
+      <span>Andre<span class="brand-accent">Store</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#products">Products</a>
+      <a href="#services">Services</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <button class="cart-btn" id="cartBtn">
+      <i data-lucide="shopping-cart"></i>
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-badge">
+      <i data-lucide="zap"></i>
+      <span>Digital Products & Services</span>
+    </div>
+    <h1>Kualitas <span class="accent">Tanpa Kompromi</span></h1>
+    <p class="hero-desc">
+      Source code, template, dan jasa IT yang dibangun dengan standar production. 
+      Semua produk sudah teruji dan siap pakai.
+    </p>
+    <div class="hero-actions">
+      <a href="#products" class="btn btn-primary">
+        Lihat Produk
+        <i data-lucide="arrow-right"></i>
+      </a>
+      <a href="#faq" class="btn btn-ghost">
+        Pelajari Lebih
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-value">50+</span>
+        <span class="stat-label">Produk Terjual</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">4.9</span>
+        <span class="stat-label">Rating Rata-rata</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">24/7</span>
+        <span class="stat-label">Support</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- PRODUCTS -->
+<section id="products">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-label">
+        <i data-lucide="package"></i>
+        <span>Products</span>
+      </div>
+      <h2>Source Code & Template</h2>
+    </div>
+
+    <div class="product-grid">
+
+      <article class="product-card" data-id="1" data-price="350000">
+        <div class="product-thumb">
+          <i data-lucide="code-2" class="thumb-icon"></i>
+          <span class="product-badge hot">Terlaris</span>
+        </div>
+        <div class="product-body">
+          <span class="product-cat">Web Application</span>
+          <h3>Website Topup Game Full Source</h3>
+          <p>Integrasi Digiflazz, VIPayment, Duitku, Tokopay. Panel admin, riwayat transaksi, callback system.</p>
+          <div class="product-meta">
+            <div class="meta-item">
+              <i data-lucide="star"></i>
+              <span>4.9</span>
+            </div>
+            <div class="meta-item">
+              <i data-lucide="download"></i>
+              <span>128 terjual</span>
+            </div>
+          </div>
+          <div class="product-foot">
+            <div class="price">
+              <span class="price-now">Rp 350K</span>
+              <span class="price-old">Rp 500K</span>
+            </div>
+            <button class="btn-buy" data-product="Website Topup Game Full Source" data-price="350000">
+              <i data-lucide="shopping-bag"></i>
+              Beli
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <article class="product-card" data-id="2" data-price="200000">
+        <div class="product-thumb">
+          <i data-lucide="bot" class="thumb-icon"></i>
+          <span class="product-badge best">Terbaik</span>
+        </div>
+        <div class="product-body">
+          <span class="product-cat">Bot Automation</span>
+          <h3>Bot WhatsApp Multi-Fitur</h3>
+          <p>Node.js + Baileys. Auto-reply, stok cek, order otomatis, integrasi database. Support multi-device.</p>
+          <div class="product-meta">
+            <div class="meta-item">
+              <i data-lucide="star"></i>
+              <span>4.8</span>
+            </div>
+            <div class="meta-item">
+              <i data-lucide="download"></i>
+              <span>94 terjual</span>
+            </div>
+          </div>
+          <div class="product-foot">
+            <div class="price">
+              <span class="price-now">Rp 200K</span>
+              <span class="price-old">Rp 300K</span>
+            </div>
+            <button class="btn-buy" data-product="Bot WhatsApp Multi-Fitur" data-price="200000">
+              <i data-lucide="shopping-bag"></i>
+              Beli
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <article class="product-card" data-id="3" data-price="75000">
+        <div class="product-thumb">
+          <i data-lucide="layout-template" class="thumb-icon"></i>
+          <span class="product-badge new">Baru</span>
+        </div>
+        <div class="product-body">
+          <span class="product-cat">Template</span>
+          <h3>Template Landing Page Portfolio</h3>
+          <p>Modern, responsive, dark mode, animasi scroll. Cocok buat freelancer dan personal branding.</p>
+          <div class="product-meta">
+            <div class="meta-item">
+              <i data-lucide="star"></i>
+              <span>5.0</span>
+            </div>
+            <div class="meta-item">
+              <i data-lucide="download"></i>
+              <span>42 terjual</span>
+            </div>
+          </div>
+          <div class="product-foot">
+            <div class="price">
+              <span class="price-now">Rp 75K</span>
+            </div>
+            <button class="btn-buy" data-product="Template Landing Page Portfolio" data-price="75000">
+              <i data-lucide="shopping-bag"></i>
+              Beli
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <article class="product-card" data-id="4" data-price="100000">
+        <div class="product-thumb">
+          <i data-lucide="gamepad-2" class="thumb-icon"></i>
+          <span class="product-badge new">Baru</span>
+        </div>
+        <div class="product-body">
+          <span class="product-cat">Game Script</span>
+          <h3>Script Lua Game Custom</h3>
+          <p>Sistem inventory, level, quest, event. Bisa request custom sesuai kebutuhan project.</p>
+          <div class="product-meta">
+            <div class="meta-item">
+              <i data-lucide="star"></i>
+              <span>4.7</span>
+            </div>
+            <div class="meta-item">
+              <i data-lucide="download"></i>
+              <span>18 terjual</span>
+            </div>
+          </div>
+          <div class="product-foot">
+            <div class="price">
+              <span class="price-now">Rp 100K</span>
+            </div>
+            <button class="btn-buy" data-product="Script Lua Game Custom" data-price="100000">
+              <i data-lucide="shopping-bag"></i>
+              Beli
+            </button>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-label">
+        <i data-lucide="wrench"></i>
+        <span>Services</span>
+      </div>
+      <h2>Jasa & Konsultasi</h2>
+    </div>
+
+    <div class="service-grid">
+
+      <article class="service-card" data-id="5" data-price="150000">
+        <div class="service-icon">
+          <i data-lucide="network"></i>
+        </div>
+        <h3>Setting Mikrotik + Jaringan Kantor</h3>
+        <p>Konfigurasi Mikrotik, manajemen bandwidth, firewall, hotspot. Remote atau on-site.</p>
+        <div class="service-foot">
+          <span class="service-price">Mulai Rp 150K</span>
+          <button class="btn-order" data-product="Setting Mikrotik + Jaringan Kantor" data-price="150000">
+            <i data-lucide="message-circle"></i>
+            Pesan
+          </button>
+        </div>
+      </article>
+
+      <article class="service-card" data-id="6" data-price="200000">
+        <div class="service-icon">
+          <i data-lucide="server"></i>
+        </div>
+        <h3>Setup VPS + Deploy Website</h3>
+        <p>Instalasi VPS dari nol: Nginx/Apache, PHP, MySQL, SSL, firewall. Deploy sampai live.</p>
+        <div class="service-foot">
+          <span class="service-price">Mulai Rp 200K</span>
+          <button class="btn-order" data-product="Setup VPS + Deploy Website" data-price="200000">
+            <i data-lucide="message-circle"></i>
+            Pesan
+          </button>
+        </div>
+      </article>
+
+      <article class="service-card" data-id="7" data-price="100000">
+        <div class="service-icon">
+          <i data-lucide="camera"></i>
+        </div>
+        <h3>Instalasi & Setting CCTV</h3>
+        <p>Pemasangan CCTV, konfigurasi DVR/NVR, remote access, dan maintenance.</p>
+        <div class="service-foot">
+          <span class="service-price">Mulai Rp 100K</span>
+          <button class="btn-order" data-product="Instalasi & Setting CCTV" data-price="100000">
+            <i data-lucide="message-circle"></i>
+            Pesan
+          </button>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-label">
+        <i data-lucide="help-circle"></i>
+        <span>FAQ</span>
+      </div>
+      <h2>Pertanyaan Umum</h2>
+    </div>
+
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>
+          <span>Bagaimana cara pembayarannya?</span>
+          <i data-lucide="chevron-down"></i>
+        </summary>
+        <p>Pembayaran diproses melalui Duitku Payment Gateway. Tersedia transfer bank, virtual account, e-wallet, dan QRIS.</p>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <span>Apakah source code bisa di-custom?</span>
+          <i data-lucide="chevron-down"></i>
+        </summary>
+        <p>Bisa. Silakan hubungi WhatsApp untuk diskusi kebutuhan custom. Biaya tambahan tergantung kompleksitas.</p>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <span>Berapa lama proses pengerjaan jasa?</span>
+          <i data-lucide="chevron-down"></i>
+        </summary>
+        <p>Untuk konfigurasi jaringan 1-2 jam (remote). Untuk deploy VPS 2-4 jam. Waktu bisa lebih lama jika ada kendala teknis.</p>
+      </details>
+      <details class="faq-item">
+        <summary>
+          <span>Apakah ada garansi?</span>
+          <i data-lucide="chevron-down"></i>
+        </summary>
+        <p>Ya. Source code garansi 7 hari untuk bug fixing. Jasa garansi 3 hari untuk troubleshooting.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span>Andre<span class="brand-accent">Store</span></span>
+        <p>Digital products & services oleh Mohammad Andre Nur Ardiansyah.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://wa.me/62895630214175" target="_blank">
+          <i data-lucide="message-circle"></i>
+          WhatsApp
+        </a>
+        <a href="https://instagram.com/redenoirr" target="_blank">
+          <i data-lucide="instagram"></i>
+          Instagram
+        </a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Andre Store. All rights reserved.</span>
+      <span class="powered">Powered by Duitku</span>
+    </div>
+  </div>
+</footer>
+
+<!-- CART DRAWER -->
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h3>Keranjang</h3>
+    <button class="cart-close" id="cartClose">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <p class="cart-empty">Keranjang kosong</p>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cartTotal">Rp 0</span>
+    </div>
+    <button class="btn-checkout" id="checkoutBtn" disabled>
+      <i data-lucide="credit-card"></i>
+      Checkout
+    </button>
+  </div>
+</div>
+<div class="cart-overlay" id="cartOverlay"></div>
+
+<script src="store.js"></script>
+</body>
+</html>
