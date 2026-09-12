@@ -12,7 +12,7 @@
 <header class="header">
   <div class="container">
     <div class="header-inner">
-      <a href="#" class="logo">
+      <a href="index.html" class="logo">
         <span class="logo-mark">R</span>
         Rexnh<span>Store</span>
       </a>
@@ -21,6 +21,9 @@
         <input type="text" id="searchInput" placeholder="Cari produk atau jasa...">
       </div>
       <div class="header-actions">
+        <a href="order.html" class="icon-btn" aria-label="Cek Pesanan" title="Cek Pesanan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </a>
         <button class="icon-btn" id="cartBtn" aria-label="Keranjang">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           <span class="cart-badge" id="cartBadge">0</span>
@@ -30,7 +33,6 @@
   </div>
 </header>
 
-<!-- BANNER -->
 <section class="banner" id="bannerSection" style="display:none">
   <div class="container">
     <a href="#" class="banner-link" id="bannerLink">
@@ -39,7 +41,6 @@
   </div>
 </section>
 
-<!-- CATEGORY TABS -->
 <div class="cats">
   <div class="container">
     <div class="cats-inner" id="catsInner">
@@ -48,7 +49,6 @@
   </div>
 </div>
 
-<!-- PRODUCTS -->
 <main class="container">
   <div class="toolbar">
     <div class="toolbar-left">
@@ -67,9 +67,7 @@
     </div>
   </div>
 
-  <div class="grid" id="grid">
-    <!-- Produk dirender oleh JS -->
-  </div>
+  <div class="grid" id="grid"></div>
 
   <div class="empty-state" id="emptyState">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -78,7 +76,6 @@
   </div>
 </main>
 
-<!-- TRUST BAR -->
 <section class="trust-bar">
   <div class="container">
     <div class="trust-grid">
@@ -122,7 +119,6 @@
   </div>
 </section>
 
-<!-- FAQ -->
 <section class="faq-section">
   <div class="container">
     <h2 class="section-title">Pertanyaan Umum</h2>
@@ -148,7 +144,6 @@
   </div>
 </section>
 
-<!-- FOOTER -->
 <footer class="footer">
   <div class="container">
     <div class="footer-grid">
@@ -175,6 +170,7 @@
       <div class="footer-col">
         <h4>Bantuan</h4>
         <a href="#faq">FAQ</a>
+        <a href="order.html">Cek Pesanan</a>
         <a href="https://wa.me/62895630214175" target="_blank">Hubungi Kami</a>
       </div>
       <div class="footer-col">
@@ -191,7 +187,6 @@
   </div>
 </footer>
 
-<!-- CART DRAWER -->
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
@@ -215,7 +210,6 @@
   </div>
 </aside>
 
-<!-- MODAL DETAIL PRODUK -->
 <div class="modal" id="productModal">
   <div class="modal-overlay" data-close-modal></div>
   <div class="modal-box">
@@ -248,7 +242,6 @@
   </div>
 </div>
 
-<!-- MODAL CHECKOUT -->
 <div class="modal" id="checkoutModal">
   <div class="modal-overlay" data-close-modal></div>
   <div class="modal-box">
