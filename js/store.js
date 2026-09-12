@@ -4,6 +4,18 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+/* ---------- ESCAPE HELPERS ---------- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function escapeAttr(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 /* ---------- TOAST ---------- */
 function showToast(msg) {
   const toast = $('#toast');
@@ -76,19 +88,15 @@ const Cart = {
     checkout.disabled = false;
 
     body.querySelectorAll('[data-remove]').forEach(btn => {
-      btn.addEventListener('click', () => this.remove(btn.dataset.remove));
+      btn.addEventListener('click', () => {
+        // decode HTML entity back
+        const tmp = document.createElement('textarea');
+        tmp.innerHTML = btn.dataset.remove;
+        this.remove(tmp.value);
+      });
     });
   }
 };
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
-function escapeAttr(s) {
-  return String(s).replace(/"/g, '&quot;');
-}
 
 /* ---------- DRAWER ---------- */
 const drawer = $('#drawer');
@@ -142,6 +150,7 @@ function renderBanner() {
   if (banner.link) {
     link.href = banner.link;
     link.target = '_blank';
+    link.rel = 'noopener';
   } else {
     link.removeAttribute('href');
     link.removeAttribute('target');
@@ -149,6 +158,8 @@ function renderBanner() {
 }
 
 /* ---------- CATEGORIES ---------- */
+let activeFilter = 'all';
+
 function renderCategories() {
   const catsInner = $('#catsInner');
   if (!catsInner) return;
@@ -177,8 +188,6 @@ function renderCategories() {
 }
 
 /* ---------- PRODUCTS RENDER ---------- */
-let activeFilter = 'all';
-
 function renderProducts() {
   const grid = $('#grid');
   const emptyState = $('#emptyState');
@@ -196,7 +205,7 @@ function renderProducts() {
   emptyState.classList.add('hidden');
 
   grid.innerHTML = products.map(p => {
-    const badge = p.badge ? `<span class="badge ${p.badge}">${badgeLabel(p.badge)}</span>` : '';
+    const badge = p.badge ? `<span class="badge ${escapeAttr(p.badge)}">${badgeLabel(p.badge)}</span>` : '';
     const thumb = p.image
       ? `<img src="${escapeAttr(p.image)}" alt="${escapeAttr(p.title)}" loading="lazy">`
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`;
@@ -211,7 +220,7 @@ function renderProducts() {
         data-id="${escapeAttr(p.id)}"
         data-category="${escapeAttr(p.category || '')}"
         data-price="${p.price || 0}"
-        data-rating="${rating}"
+        data-rating="${escapeAttr(rating)}"
         data-sold="${sold}"
         data-created="${escapeAttr(p.createdAt || '')}">
         <div class="card-thumb">
@@ -224,7 +233,7 @@ function renderProducts() {
           <p class="card-desc">${escapeHtml(p.desc || '')}</p>
           <div class="card-meta">
             <div class="meta-item">
-              <svg class="star" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${rating}
+              <svg class="star" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${escapeHtml(rating)}
             </div>
             <div class="meta-item">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>${sold} ${soldLabel}
@@ -266,7 +275,9 @@ function bindProductEvents() {
   $$('.btn-buy').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      Cart.add(btn.dataset.product, parseInt(btn.dataset.price, 10));
+      const tmp = document.createElement('textarea');
+      tmp.innerHTML = btn.dataset.product;
+      Cart.add(tmp.value, parseInt(btn.dataset.price, 10));
       openDrawer();
     });
   });
@@ -276,7 +287,7 @@ function bindProductEvents() {
 function showProductModal(product) {
   $('#modalTitle').textContent = product.title;
   $('#modalCat').textContent = product.categoryLabel || product.category || '';
-  $('#modalDesc').textContent = product.desc || '';
+  $('#modalDesc').textContent = product.fullDesc || product.desc || '';
   $('#modalPrice').textContent = rupiah(product.price);
   $('#modalPriceOld').textContent = product.oldPrice ? rupiah(product.oldPrice) : '';
 
@@ -307,13 +318,13 @@ function showProductModal(product) {
 }
 
 /* ---------- FILTER / SEARCH / SORT ---------- */
-const searchInput = $('#searchInput');
-const sortSelect = $('#sortSelect');
-const grid = $('#grid');
-const resultCount = $('#resultCount');
-
 function applyFilters() {
+  const grid = $('#grid');
+  const searchInput = $('#searchInput');
+  const sortSelect = $('#sortSelect');
+  const resultCount = $('#resultCount');
   if (!grid) return;
+
   const q = (searchInput?.value || '').toLowerCase().trim();
   const cards = Array.from(grid.querySelectorAll('.card'));
   let visible = 0;
@@ -334,7 +345,7 @@ function applyFilters() {
     const pa = +a.dataset.price, pb = +b.dataset.price;
     const ra = +a.dataset.rating, rb = +b.dataset.rating;
     const sa = +a.dataset.sold, sb = +b.dataset.sold;
-    const ca = a.dataset.created, cb = b.dataset.created;
+    const ca = a.dataset.created || '', cb = b.dataset.created || '';
     if (sortBy === 'price-low') return pa - pb;
     if (sortBy === 'price-high') return pb - pa;
     if (sortBy === 'rating') return rb - ra;
@@ -343,11 +354,8 @@ function applyFilters() {
   });
   visibleCards.forEach(c => grid.appendChild(c));
 
-  resultCount.textContent = visible + ' produk';
+  if (resultCount) resultCount.textContent = visible + ' produk';
 }
-
-searchInput?.addEventListener('input', applyFilters);
-sortSelect?.addEventListener('change', applyFilters);
 
 /* ---------- CHECKOUT ---------- */
 $('#checkoutBtn')?.addEventListener('click', () => {
@@ -404,7 +412,7 @@ $('#coPayBtn')?.addEventListener('click', async () => {
     customerVaName: name,
     phoneNumber: phone,
     items: order.items,
-    returnUrl: window.location.origin + '/?payment=success&order=' + order.id,
+    returnUrl: window.location.origin + '/order.html?order=' + order.id,
     callbackUrl: window.location.origin + '/api/duitku-callback'
   };
 
@@ -429,7 +437,7 @@ $('#coPayBtn')?.addEventListener('click', async () => {
   // }
 
   // ============================================================
-  // DEV — hanya buat test alur (TIDAK simulasi pembayaran)
+  // DEV — redirect ke halaman cek pesanan
   // ============================================================
   console.log('Order saved:', order);
   showToast('Order ' + order.id + ' berhasil dibuat');
@@ -437,16 +445,24 @@ $('#coPayBtn')?.addEventListener('click', async () => {
   btn.disabled = false;
   btn.innerHTML = originalText;
   closeModal('checkoutModal');
+  setTimeout(() => {
+    window.location.href = 'order.html?order=' + order.id;
+  }, 600);
 });
 
-/* ---------- FOOTER FILTER ---------- */
-function filterFromFooter(cat) {
+/* ---------- GLOBAL FOOTER FILTER ---------- */
+window.filterFromFooter = function(cat) {
   const tab = document.querySelector(`.cat[data-filter="${cat}"]`);
   if (tab) {
     tab.click();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    // Kalo kategori belum ada tab-nya, set langsung
+    activeFilter = cat;
+    applyFilters();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-}
+};
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -454,4 +470,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProducts();
   renderCategories();
   Cart.render();
+
+  // Attach search & sort SETELAH render
+  $('#searchInput')?.addEventListener('input', applyFilters);
+  $('#sortSelect')?.addEventListener('change', applyFilters);
 });
