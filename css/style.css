@@ -74,10 +74,10 @@ img,svg{display:block}
   background:var(--bg);border:1px solid var(--border);
   display:flex;align-items:center;justify-content:center;
   color:var(--text-2);transition:all .15s;
+  text-decoration:none;
 }
 .icon-btn:hover{border-color:var(--border-2);color:var(--text)}
-.icon-btn svg{width:18px;height:18px}
-.cart-badge{
+.icon-btn svg{width:18px;height:18px}.cart-badge{
   position:absolute;top:-5px;right:-5px;
   min-width:18px;height:18px;padding:0 5px;
   background:var(--accent);color:#fff;
