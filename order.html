@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cek Pesanan — Rexnh Store</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.order-page{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+.order-hero{text-align:center;margin-bottom:36px}
+.order-hero h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
+.order-hero p{font-size:14px;color:var(--text-2);max-width:480px;margin:0 auto}
+
+.track-form{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;
+}
+.track-tabs{display:flex;gap:6px;margin-bottom:20px}
+.track-tab{
+  flex:1;padding:9px 14px;border-radius:var(--radius-sm);
+  background:var(--bg);border:1px solid var(--border);
+  font-size:13px;color:var(--text-2);transition:all .15s;
+}
+.track-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+
+.track-input-row{display:flex;gap:10px}
+.track-input-row input{
+  flex:1;padding:12px 14px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);font-size:14px;
+  outline:none;transition:border-color .15s;
+}
+.track-input-row input:focus{border-color:var(--accent)}
+.track-input-row button{
+  padding:12px 22px;border-radius:var(--radius-sm);
+  background:var(--accent);color:#fff;font-size:14px;font-weight:600;
+  transition:background .15s;white-space:nowrap;
+}
+.track-input-row button:hover{background:var(--accent-hover)}
+
+.track-result{margin-top:8px}
+
+.order-card{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:22px;margin-bottom:14px;
+}
+.order-card-head{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  gap:16px;padding-bottom:16px;border-bottom:1px solid var(--border);
+  margin-bottom:16px;flex-wrap:wrap;
+}
+.order-card-id{font-size:15px;font-weight:600;margin-bottom:4px;letter-spacing:-.01em}
+.order-card-date{font-size:12.5px;color:var(--text-3)}
+
+.order-timeline{
+  display:flex;align-items:center;gap:6px;margin-bottom:18px;
+  padding:16px;background:var(--bg);border-radius:var(--radius-sm);
+  border:1px solid var(--border);overflow-x:auto;
+}
+.tl-step{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  font-size:12px;color:var(--text-3);
+}
+.tl-dot{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-3);border:1px solid var(--border);
+  flex-shrink:0;
+}
+.tl-dot svg{width:12px;height:12px;color:var(--text-3)}
+.tl-step.done .tl-dot{background:var(--green);border-color:var(--green)}
+.tl-step.done .tl-dot svg{color:#fff}
+.tl-step.active .tl-dot{background:var(--accent);border-color:var(--accent);animation:pulseDot 1.6s infinite}
+.tl-step.active .tl-dot svg{color:#fff}
+.tl-step.done,.tl-step.active{color:var(--text)}
+.tl-step.active{font-weight:500}
+.tl-line{width:24px;height:1px;background:var(--border);flex-shrink:0}
+.tl-line.done{background:var(--green)}
+@keyframes pulseDot{
+  0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.5)}
+  50%{box-shadow:0 0 0 8px rgba(59,130,246,0)}
+}
+
+.order-status-banner{
+  padding:12px 16px;border-radius:var(--radius-sm);
+  font-size:13px;display:flex;align-items:center;gap:10px;
+  margin-bottom:16px;
+}
+.order-status-banner.pending{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.order-status-banner.processing{background:rgba(59,130,246,.1);color:var(--accent);border:1px solid rgba(59,130,246,.2)}
+.order-status-banner.paid{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.order-status-banner.completed{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.order-status-banner.cancelled{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.order-status-banner svg{width:16px;height:16px;flex-shrink:0}
+
+.order-items{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.order-item-row{
+  display:flex;justify-content:space-between;gap:12px;
+  font-size:13.5px;color:var(--text-2);padding:8px 0;
+  border-bottom:1px solid var(--border);
+}
+.order-item-row:last-child{border-bottom:none}
+.order-item-row.total{
+  border-top:1px solid var(--border);border-bottom:none;
+  padding-top:12px;margin-top:4px;
+  color:var(--text);font-weight:600;font-size:15px;
+}
+
+.order-customer{
+  padding-top:16px;border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+}
+.cust-field{font-size:12.5px}
+.cust-field-label{color:var(--text-3);margin-bottom:2px}
+.cust-field-value{color:var(--text-2)}
+
+.empty-track{
+  text-align:center;padding:60px 20px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.empty-track svg{width:56px;height:56px;color:var(--text-3);opacity:.5}
+.empty-track p{font-size:13.5px;color:var(--text-3)}
+
+.back-home{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--text-2);margin-bottom:24px;
+  transition:color .15s;
+}
+.back-home:hover{color:var(--text)}
+.back-home svg{width:16px;height:16px}
+
+@media (max-width:520px){
+  .order-customer{grid-template-columns:1fr}
+  .track-input-row{flex-direction:column}
+  .track-input-row button{width:100%}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark">R</span>
+        Rexnh<span>Store</span>
+      </a>
+      <div class="header-actions" style="margin-left:auto">
+        <a href="index.html" class="icon-btn" aria-label="Beranda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="order-page">
+  <a href="index.html" class="back-home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Kembali ke toko
+  </a>
+
+  <div class="order-hero">
+    <h1>Cek Status Pesanan</h1>
+    <p>Masukkan Order ID atau nomor WhatsApp yang kamu pakai saat checkout untuk melihat status pesanan.</p>
+  </div>
+
+  <div class="track-form">
+    <div class="track-tabs">
+      <button class="track-tab active" data-method="order">Order ID</button>
+      <button class="track-tab" data-method="phone">Nomor WhatsApp</button>
+    </div>
+    <div class="track-input-row">
+      <input type="text" id="trackInput" placeholder="Contoh: ORD-1234567890-ABCD">
+      <button id="trackBtn">Cek Pesanan</button>
+    </div>
+  </div>
+
+  <div class="track-result" id="trackResult"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+let method = 'order';
+
+/* ---------- ESCAPE ---------- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* ---------- TABS ---------- */
+$$('.track-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    $$('.track-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    method = tab.dataset.method;
+    const input = $('#trackInput');
+    if (method === 'order') {
+      input.placeholder = 'Contoh: ORD-1234567890-ABCD';
+    } else {
+      input.placeholder = 'Contoh: 0895630214175';
+    }
+    input.value = '';
+    $('#trackResult').innerHTML = '';
+  });
+});
+
+/* ---------- ORDER STATUS STEPS ---------- */
+function statusSteps(status) {
+  const steps = [
+    { key: 'pending', label: 'Dibuat' },
+    { key: 'processing', label: 'Diproses' },
+    { key: 'paid', label: 'Dibayar' },
+    { key: 'completed', label: 'Selesai' }
+  ];
+  const order = ['pending', 'processing', 'paid', 'completed'];
+  if (status === 'cancelled') return { steps, current: -1, cancelled: true };
+  const idx = order.indexOf(status);
+  return { steps, current: idx >= 0 ? idx : 0, cancelled: false };
+}
+
+function renderTimeline(status) {
+  const { steps, current, cancelled } = statusSteps(status);
+
+  if (cancelled) {
+    return `
+      <div class="order-timeline">
+        <div class="tl-step active" style="color:var(--red)">
+          <div class="tl-dot" style="background:var(--red);border-color:var(--red)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <span>Dibatalkan</span>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="order-timeline">
+      ${steps.map((step, i) => {
+        const done = i < current;
+        const active = i === current;
+        const cls = done ? 'done' : active ? 'active' : '';
+        const icon = done
+          ? '<polyline points="20 6 9 17 4 12"/>'
+          : active
+            ? '<circle cx="12" cy="12" r="4" fill="currentColor"/>'
+            : '<circle cx="12" cy="12" r="4"/>';
+        return `
+          <div class="tl-step ${cls}">
+            <div class="tl-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+            </div>
+            <span>${step.label}</span>
+          </div>
+          ${i < steps.length - 1 ? `<div class="tl-line ${i < current ? 'done' : ''}"></div>` : ''}
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function statusIcon(status) {
+  const icons = {
+    pending: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    processing: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    paid: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    completed: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    cancelled: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+  };
+  return icons[status] || icons.pending;
+}
+
+function renderOrderCard(order) {
+  const items = order.items.map(i => `
+    <div class="order-item-row">
+      <span>${escapeHtml(i.product)} × ${i.qty}</span>
+      <span>${rupiah(i.price * i.qty)}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="order-card">
+      <div class="order-card-head">
+        <div>
+          <div class="order-card-id">${escapeHtml(order.id)}</div>
+          <div class="order-card-date">${formatDate(order.createdAt)}</div>
+        </div>
+        <span class="status-pill ${order.status}">${DB.statusLabel(order.status)}</span>
+      </div>
+
+      ${renderTimeline(order.status)}
+
+      <div class="order-status-banner ${order.status}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${statusIcon(order.status)}</svg>
+        <span>${DB.statusDescription(order.status)}</span>
+      </div>
+
+      <div class="order-items">
+        ${items}
+        <div class="order-item-row total">
+          <span>Total</span>
+          <span>${rupiah(order.total)}</span>
+        </div>
+      </div>
+
+      <div class="order-customer">
+        <div class="cust-field">
+          <div class="cust-field-label">Nama</div>
+          <div class="cust-field-value">${escapeHtml(order.customer?.name || '-')}</div>
+        </div>
+        <div class="cust-field">
+          <div class="cust-field-label">Email</div>
+          <div class="cust-field-value">${escapeHtml(order.customer?.email || '-')}</div>
+        </div>
+        <div class="cust-field">
+          <div class="cust-field-label">WhatsApp</div>
+          <div class="cust-field-value">${escapeHtml(order.customer?.phone || '-')}</div>
+        </div>
+        <div class="cust-field">
+          <div class="cust-field-label">Status</div>
+          <div class="cust-field-value">${DB.statusLabel(order.status)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- TRACK ---------- */
+$('#trackBtn')?.addEventListener('click', trackOrder);
+$('#trackInput')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') trackOrder();
+});
+
+function trackOrder() {
+  const input = $('#trackInput').value.trim();
+  const result = $('#trackResult');
+
+  if (!input) {
+    result.innerHTML = `
+      <div class="empty-track">
+        <p>Masukkan ${method === 'order' ? 'Order ID' : 'nomor WhatsApp'} dulu.</p>
+      </div>
+    `;
+    return;
+  }
+
+  let orders = [];
+  if (method === 'order') {
+    const o = DB.findOrder(input.toUpperCase());
+    if (o) orders = [o];
+  } else {
+    orders = DB.findOrdersByPhone(input);
+  }
+
+  if (orders.length === 0) {
+    result.innerHTML = `
+      <div class="empty-track">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <p>Pesanan tidak ditemukan. Pastikan ${method === 'order' ? 'Order ID' : 'nomor WhatsApp'} sudah benar.</p>
+      </div>
+    `;
+    return;
+  }
+
+  result.innerHTML = orders.map(renderOrderCard).join('');
+}
+
+/* ---------- INIT: auto-track kalau ada ?order= di URL ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get('order');
+  if (orderId) {
+    $('#trackInput').value = orderId;
+    trackOrder();
+  }
+});
+</script>
+</body>
+</html>
