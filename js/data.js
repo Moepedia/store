@@ -2,12 +2,34 @@
    DATA LAYER — localStorage based
    Ganti ke API/backend nanti tinggal ubah di sini
 ============================================================ */
+
+/* ---------- ADMIN PASSWORD ---------- */
+const ADMIN_PASSWORD = 'rexnh2026';
+
 const DB = {
   KEYS: {
     PRODUCTS: 'rexnh_products',
     BANNER: 'rexnh_banner',
     ORDERS: 'rexnh_orders',
-    SETTINGS: 'rexnh_settings'
+    SETTINGS: 'rexnh_settings',
+    AUTH: 'rexnh_admin_auth'
+  },
+
+  /* ---------- AUTH ---------- */
+  isLoggedIn() {
+    return sessionStorage.getItem(this.KEYS.AUTH) === 'true';
+  },
+
+  login(password) {
+    if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem(this.KEYS.AUTH, 'true');
+      return true;
+    }
+    return false;
+  },
+
+  logout() {
+    sessionStorage.removeItem(this.KEYS.AUTH);
   },
 
   /* ---------- PRODUCTS ---------- */
@@ -94,11 +116,43 @@ const DB = {
     return orders[idx];
   },
 
+  findOrder(id) {
+    return this.getOrders().find(o => o.id === id);
+  },
+
+  findOrdersByPhone(phone) {
+    const clean = phone.replace(/\D/g, '');
+    return this.getOrders().filter(o =>
+      (o.customer?.phone || '').replace(/\D/g, '').includes(clean)
+    );
+  },
+
   /* ---------- CATEGORIES (derived) ---------- */
   getCategories() {
     const products = this.getProducts();
     const cats = new Set(products.map(p => p.category).filter(Boolean));
     return Array.from(cats);
+  },
+
+  /* ---------- ORDER STATUS HELPERS ---------- */
+  statusLabel(status) {
+    return {
+      pending: 'Menunggu Pembayaran',
+      processing: 'Diproses',
+      paid: 'Dibayar',
+      completed: 'Selesai',
+      cancelled: 'Dibatalkan'
+    }[status] || status;
+  },
+
+  statusDescription(status) {
+    return {
+      pending: 'Pesanan sudah dibuat, menunggu pembayaran kamu.',
+      processing: 'Pembayaran diterima. Pesanan sedang kami proses.',
+      paid: 'Pembayaran terkonfirmasi. Produk segera dikirim.',
+      completed: 'Pesanan selesai. Terima kasih sudah order!',
+      cancelled: 'Pesanan dibatalkan.'
+    }[status] || '';
   }
 };
 
