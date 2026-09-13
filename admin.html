@@ -6,7 +6,6 @@
 <title>Admin Panel — Rexnh Store</title>
 <link rel="stylesheet" href="css/style.css">
 <style>
-/* Admin specific */
 .admin-layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .sidebar{
   background:var(--bg-2);border-right:1px solid var(--border);
@@ -135,7 +134,7 @@ tbody tr:hover{background:var(--bg-3)}
 
 .empty-row{text-align:center;padding:40px 0;color:var(--text-3);font-size:13px}
 
-/* LOGIN SCREEN */
+/* LOGIN & SETUP SCREEN */
 .login-screen{
   position:fixed;inset:0;z-index:500;
   display:flex;align-items:center;justify-content:center;
@@ -145,7 +144,7 @@ tbody tr:hover{background:var(--bg-3)}
 .login-box{
   background:var(--bg-2);border:1px solid var(--border);
   border-radius:var(--radius-lg);padding:32px;
-  width:100%;max-width:380px;box-shadow:var(--shadow);
+  width:100%;max-width:420px;box-shadow:var(--shadow);
 }
 .login-logo{
   display:flex;align-items:center;justify-content:center;
@@ -161,9 +160,37 @@ tbody tr:hover{background:var(--bg-3)}
   border-radius:var(--radius-sm);margin-bottom:14px;display:none;
 }
 .login-error.show{display:block}
+.login-success{
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
+  color:var(--green);font-size:12.5px;padding:10px 12px;
+  border-radius:var(--radius-sm);margin-bottom:14px;display:none;
+}
+.login-success.show{display:block}
 .login-hint{
   text-align:center;font-size:11.5px;color:var(--text-3);
   margin-top:16px;line-height:1.6;
+}
+.step-indicator{
+  display:flex;justify-content:center;gap:8px;margin-bottom:24px;
+}
+.step-dot{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-3);color:var(--text-3);font-size:12px;font-weight:600;
+  border:1px solid var(--border);
+}
+.step-dot.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.step-dot.done{background:var(--green);color:#fff;border-color:var(--green)}
+
+.connection-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 11px;border-radius:100px;
+  font-size:11.5px;font-weight:600;
+}
+.connection-badge.online{background:rgba(34,197,94,.15);color:var(--green)}
+.connection-badge.offline{background:rgba(245,158,11,.15);color:var(--amber)}
+.connection-badge .dot{
+  width:7px;height:7px;border-radius:50%;background:currentColor;
 }
 
 @media (max-width:720px){
@@ -178,8 +205,57 @@ tbody tr:hover{background:var(--bg-3)}
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div class="login-screen" id="loginScreen">
+<!-- ============================================================
+     SETUP WIZARD — muncul kalo Supabase belum dikonfigurasi
+============================================================ -->
+<div class="login-screen hidden" id="setupScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-mark">R</span>
+      Rexnh<span style="color:var(--text-2);font-weight:400">Setup</span>
+    </div>
+    <p class="login-sub">Konfigurasi database Supabase</p>
+
+    <div class="step-indicator">
+      <div class="step-dot active" id="stepDot1">1</div>
+      <div class="step-dot" id="stepDot2">2</div>
+      <div class="step-dot" id="stepDot3">3</div>
+    </div>
+
+    <div class="login-error" id="setupError"></div>
+    <div class="login-success" id="setupSuccess"></div>
+
+    <div class="field">
+      <label>Supabase Project URL</label>
+      <input type="url" id="setupUrl" placeholder="https://xxxxx.supabase.co">
+      <div class="field-hint">Dari Supabase → Settings → API → Project URL</div>
+    </div>
+
+    <div class="field">
+      <label>Supabase Publishable Key</label>
+      <input type="text" id="setupKey" placeholder="sb_publishable_...">
+      <div class="field-hint">Dari Supabase → Settings → API → Publishable key</div>
+    </div>
+
+    <button class="btn btn-primary" id="setupTestBtn" style="width:100%;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Test & Simpan Koneksi
+    </button>
+
+    <p class="login-hint">
+      Konfigurasi ini disimpan di browser kamu. Bisa diubah nanti di tab <strong style="color:var(--text-2)">Settings</strong>.
+    </p>
+
+    <button class="btn btn-secondary" id="setupSkipBtn" style="width:100%;justify-content:center;margin-top:10px">
+      Lewati (pakai localStorage)
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
+<div class="login-screen hidden" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
       <span class="logo-mark">R</span>
@@ -195,16 +271,14 @@ tbody tr:hover{background:var(--bg-3)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       Masuk
     </button>
-    <p class="login-hint">
-      Password default: <strong style="color:var(--text-2)">rexnh2026</strong><br>
-      Ganti di <code style="color:var(--accent)">js/data.js</code> → <code style="color:var(--accent)">ADMIN_PASSWORD</code>
-    </p>
   </div>
 </div>
 
+<!-- ============================================================
+     ADMIN LAYOUT
+============================================================ -->
 <div class="admin-layout" id="adminLayout" style="display:none">
 
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <span class="logo-mark">R</span>
@@ -227,6 +301,10 @@ tbody tr:hover{background:var(--bg-3)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Pesanan
       </button>
+      <button data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
     </nav>
     <div class="sidebar-footer">
       <a href="index.html">
@@ -240,7 +318,6 @@ tbody tr:hover{background:var(--bg-3)}
     </div>
   </aside>
 
-  <!-- MAIN -->
   <main class="admin-main">
 
     <!-- DASHBOARD -->
@@ -322,7 +399,7 @@ tbody tr:hover{background:var(--bg-3)}
             </tr>
           </thead>
           <tbody id="productsTable">
-            <tr><td colspan="5" class="empty-row">Belum ada produk</td></tr>
+            <tr><td colspan="5" class="empty-row">Memuat...</td></tr>
           </tbody>
         </table>
       </div>
@@ -353,9 +430,72 @@ tbody tr:hover{background:var(--bg-3)}
             </tr>
           </thead>
           <tbody id="ordersTable">
-            <tr><td colspan="6" class="empty-row">Belum ada pesanan</td></tr>
+            <tr><td colspan="6" class="empty-row">Memuat...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="admin-header">
+        <h1>Settings</h1>
+        <p>Kelola password admin & koneksi database</p>
+      </div>
+
+      <!-- Status koneksi -->
+      <div class="panel">
+        <div class="panel-title">Status Koneksi Database</div>
+        <div class="panel-desc">Supabase sebagai database utama, localStorage sebagai fallback</div>
+        <div id="connStatusWrap"></div>
+      </div>
+
+      <!-- Ganti password -->
+      <div class="panel">
+        <div class="panel-title">Ganti Password Admin</div>
+        <div class="panel-desc">Password disimpan di database Supabase (tabel <code>settings</code>)</div>
+        <div class="login-error" id="pwError"></div>
+        <div class="login-success" id="pwSuccess"></div>
+        <div class="field">
+          <label>Password Lama</label>
+          <input type="password" id="oldPassword" placeholder="Masukkan password lama">
+        </div>
+        <div class="field">
+          <label>Password Baru</label>
+          <input type="password" id="newPassword" placeholder="Minimal 6 karakter">
+        </div>
+        <div class="field">
+          <label>Konfirmasi Password Baru</label>
+          <input type="password" id="confirmPassword" placeholder="Ulangi password baru">
+        </div>
+        <button class="btn btn-primary" id="changePasswordBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Simpan Password Baru
+        </button>
+      </div>
+
+      <!-- Supabase config -->
+      <div class="panel">
+        <div class="panel-title">Konfigurasi Supabase</div>
+        <div class="panel-desc">Ubah URL & key kapan saja. Kosongkan untuk kembali ke localStorage.</div>
+        <div class="field">
+          <label>Supabase Project URL</label>
+          <input type="url" id="sbUrl" placeholder="https://xxxxx.supabase.co">
+        </div>
+        <div class="field">
+          <label>Supabase Publishable Key</label>
+          <input type="text" id="sbKey" placeholder="sb_publishable_...">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="saveSbBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Simpan & Test
+          </button>
+          <button class="btn btn-danger" id="clearSbBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Hapus Konfigurasi
+          </button>
+        </div>
       </div>
     </div>
 
@@ -454,6 +594,7 @@ tbody tr:hover{background:var(--bg-3)}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js"></script>
 <script src="js/admin.js"></script>
 </body>
