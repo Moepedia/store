@@ -166,14 +166,14 @@ const DB = {
     localStorage.setItem(this.KEYS.PRODUCTS, JSON.stringify(products.filter(p => p.id !== id)));
   },
 
-  async getProduct(id) {
+    async getProduct(id) {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from('products')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
         if (!error && data) return data;
       } catch (e) { /* fallback */ }
     }
@@ -182,14 +182,14 @@ const DB = {
   },
 
   /* ---------- BANNER ---------- */
-  async getBanner() {
+    async getBanner() {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from('banner')
           .select('*')
           .eq('id', 1)
-          .single();
+          .maybeSingle();
         if (!error && data) return data;
       } catch (e) { /* fallback */ }
     }
@@ -282,14 +282,14 @@ const DB = {
     }
   },
 
-  async findOrder(id) {
+    async findOrder(id) {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from('orders')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
         if (!error && data) return data;
       } catch (e) { /* fallback */ }
     }
