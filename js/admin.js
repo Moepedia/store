@@ -102,7 +102,7 @@ $('#setupSkipBtn')?.addEventListener('click', () => {
   showLogin();
 });
 
-/* ---------- LOGIN (Supabase Auth / fallback) ---------- */
+/* ---------- LOGIN ---------- */
 $('#loginBtn')?.addEventListener('click', async () => {
   const email = $('#loginEmail').value.trim();
   const pw = $('#loginPassword').value;
@@ -119,10 +119,8 @@ $('#loginBtn')?.addEventListener('click', async () => {
 
   try {
     if (DB.client()) {
-      // Pake Supabase Auth
       await DB.login(email, pw);
     } else {
-      // Fallback localStorage
       const ok = await DB.verifyPassword(pw);
       if (!ok) throw new Error('Password salah');
     }
@@ -579,5 +577,6 @@ $('#clearSbBtn')?.addEventListener('click', async () => {
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  initSupabase();
   checkAuth();
 });
