@@ -1,5 +1,5 @@
 /* ============================================================
-   STOREFRONT LOGIC
+   STOREFRONT LOGIC — Fixed async/await
 ============================================================ */
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -89,7 +89,6 @@ const Cart = {
 
     body.querySelectorAll('[data-remove]').forEach(btn => {
       btn.addEventListener('click', () => {
-        // decode HTML entity back
         const tmp = document.createElement('textarea');
         tmp.innerHTML = btn.dataset.remove;
         this.remove(tmp.value);
@@ -133,9 +132,9 @@ $$('[data-close-modal]').forEach(el => {
   });
 });
 
-/* ---------- BANNER ---------- */
-function renderBanner() {
-  const banner = DB.getBanner();
+/* ---------- BANNER (ASYNC) ---------- */
+async function renderBanner() {
+  const banner = await DB.getBanner();
   const section = $('#bannerSection');
   if (!section) return;
 
@@ -157,14 +156,14 @@ function renderBanner() {
   }
 }
 
-/* ---------- CATEGORIES ---------- */
+/* ---------- CATEGORIES (ASYNC) ---------- */
 let activeFilter = 'all';
 
-function renderCategories() {
+async function renderCategories() {
   const catsInner = $('#catsInner');
   if (!catsInner) return;
 
-  const categories = DB.getCategories();
+  const categories = await DB.getCategories();
   const labels = {
     'source-code': 'Source Code',
     'template': 'Template',
@@ -187,33 +186,36 @@ function renderCategories() {
   });
 }
 
-/* ---------- PRODUCTS RENDER ---------- */
-function renderProducts() {
+/* ---------- PRODUCTS RENDER (ASYNC) ---------- */
+async function renderProducts() {
   const grid = $('#grid');
   const emptyState = $('#emptyState');
   if (!grid) return;
 
-  const products = DB.getProducts();
+  const products = await DB.getProducts();
 
-  if (products.length === 0) {
+  if (!Array.isArray(products) || products.length === 0) {
     grid.innerHTML = '';
-    emptyState.classList.remove('hidden');
+    emptyState?.classList.remove('hidden');
     $('#resultCount').textContent = '0 produk';
     return;
   }
 
-  emptyState.classList.add('hidden');
+  emptyState?.classList.add('hidden');
 
   grid.innerHTML = products.map(p => {
     const badge = p.badge ? `<span class="badge ${escapeAttr(p.badge)}">${badgeLabel(p.badge)}</span>` : '';
     const thumb = p.image
       ? `<img src="${escapeAttr(p.image)}" alt="${escapeAttr(p.title)}" loading="lazy">`
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`;
-    const oldPrice = p.oldPrice ? `<span class="price-old">${rupiah(p.oldPrice)}</span>` : '';
-    const suffix = p.priceSuffix ? `<span class="price-suffix">${escapeHtml(p.priceSuffix)}</span>` : '';
+    const oldPrice = (p.old_price || p.oldPrice) ? `<span class="price-old">${rupiah(p.old_price || p.oldPrice)}</span>` : '';
+    const suffix = (p.price_suffix || p.priceSuffix) ? `<span class="price-suffix">${escapeHtml(p.price_suffix || p.priceSuffix)}</span>` : '';
     const rating = p.rating || '5.0';
     const sold = p.sold || 0;
     const soldLabel = p.category === 'service' ? 'pesanan' : 'terjual';
+    const catLabel = p.category_label || p.categoryLabel || p.category || '';
+    const desc = p.desc_text || p.desc || '';
+    const createdAt = p.created_at || p.createdAt || '';
 
     return `
       <article class="card"
@@ -222,15 +224,15 @@ function renderProducts() {
         data-price="${p.price || 0}"
         data-rating="${escapeAttr(rating)}"
         data-sold="${sold}"
-        data-created="${escapeAttr(p.createdAt || '')}">
+        data-created="${escapeAttr(createdAt)}">
         <div class="card-thumb">
           ${thumb}
           ${badge}
         </div>
         <div class="card-body">
-          <span class="card-cat">${escapeHtml(p.categoryLabel || p.category || '')}</span>
+          <span class="card-cat">${escapeHtml(catLabel)}</span>
           <h3 class="card-title">${escapeHtml(p.title)}</h3>
-          <p class="card-desc">${escapeHtml(p.desc || '')}</p>
+          <p class="card-desc">${escapeHtml(desc)}</p>
           <div class="card-meta">
             <div class="meta-item">
               <svg class="star" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${escapeHtml(rating)}
@@ -264,9 +266,9 @@ function badgeLabel(badge) {
 
 function bindProductEvents() {
   $$('.card').forEach(card => {
-    card.addEventListener('click', (e) => {
+    card.addEventListener('click', async (e) => {
       if (e.target.closest('.btn-buy')) return;
-      const product = DB.getProduct(card.dataset.id);
+      const product = await DB.getProduct(card.dataset.id);
       if (!product) return;
       showProductModal(product);
     });
@@ -286,10 +288,11 @@ function bindProductEvents() {
 /* ---------- PRODUCT MODAL ---------- */
 function showProductModal(product) {
   $('#modalTitle').textContent = product.title;
-  $('#modalCat').textContent = product.categoryLabel || product.category || '';
-  $('#modalDesc').textContent = product.fullDesc || product.desc || '';
+  $('#modalCat').textContent = product.category_label || product.categoryLabel || product.category || '';
+  $('#modalDesc').textContent = product.full_desc || product.fullDesc || product.desc_text || product.desc || '';
   $('#modalPrice').textContent = rupiah(product.price);
-  $('#modalPriceOld').textContent = product.oldPrice ? rupiah(product.oldPrice) : '';
+  const oldP = product.old_price || product.oldPrice;
+  $('#modalPriceOld').textContent = oldP ? rupiah(oldP) : '';
 
   const features = (product.features || '').split('|').filter(Boolean);
   $('#modalFeatures').innerHTML = features.map(f => `
@@ -379,7 +382,7 @@ $('#checkoutBtn')?.addEventListener('click', () => {
   openModal('checkoutModal');
 });
 
-/* ---------- PAYMENT ---------- */
+/* ---------- PAYMENT (ASYNC) ---------- */
 $('#coPayBtn')?.addEventListener('click', async () => {
   const name = $('#coName').value.trim();
   const email = $('#coEmail').value.trim();
@@ -395,59 +398,56 @@ $('#coPayBtn')?.addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = 'Memproses...';
 
-  // Simpan order ke DB
-  const order = DB.addOrder({
-    customer: { name, email, phone },
-    items: Cart.items.map(i => ({ product: i.product, price: i.price, qty: i.qty })),
-    total: Cart.total(),
-    status: 'pending',
-    paymentMethod: 'duitku'
-  });
+  try {
+    const order = await DB.addOrder({
+      customer: { name, email, phone },
+      items: Cart.items.map(i => ({ product: i.product, price: i.price, qty: i.qty })),
+      total: Cart.total(),
+      status: 'pending',
+      paymentMethod: 'duitku'
+    });
 
-  const payload = {
-    merchantOrderId: order.id,
-    paymentAmount: order.total,
-    productDetails: order.items.map(i => i.product).join(', '),
-    email: email,
-    customerVaName: name,
-    phoneNumber: phone,
-    items: order.items,
-    returnUrl: window.location.origin + '/order.html?order=' + order.id,
-    callbackUrl: window.location.origin + '/api/duitku-callback'
-  };
+    const payload = {
+      merchantOrderId: order.id,
+      paymentAmount: order.total,
+      productDetails: order.items.map(i => i.product).join(', '),
+      email: email,
+      customerVaName: name,
+      phoneNumber: phone,
+      items: order.items,
+      returnUrl: window.location.origin + '/order.html?order=' + order.id,
+      callbackUrl: window.location.origin + '/api/duitku-callback'
+    };
 
-  // ============================================================
-  // PRODUCTION: uncomment setelah backend siap
-  // ============================================================
-  // try {
-  //   const res = await fetch('/api/create-payment', {
-  //     method: 'POST',
-  //     headers: {'Content-Type': 'application/json'},
-  //     body: JSON.stringify(payload)
-  //   });
-  //   const data = await res.json();
-  //   if (data.paymentUrl) {
-  //     Cart.clear();
-  //     window.location.href = data.paymentUrl;
-  //   } else throw new Error(data.error || 'Gagal');
-  // } catch (e) {
-  //   showToast('Gagal: ' + e.message);
-  //   btn.disabled = false;
-  //   btn.innerHTML = originalText;
-  // }
+    // ============================================================
+    // PRODUCTION: uncomment setelah backend siap
+    // ============================================================
+    // const res = await fetch('/api/create-payment', {
+    //   method: 'POST',
+    //   headers: {'Content-Type': 'application/json'},
+    //   body: JSON.stringify(payload)
+    // });
+    // const data = await res.json();
+    // if (data.paymentUrl) {
+    //   Cart.clear();
+    //   window.location.href = data.paymentUrl;
+    // } else throw new Error(data.error || 'Gagal');
 
-  // ============================================================
-  // DEV — redirect ke halaman cek pesanan
-  // ============================================================
-  console.log('Order saved:', order);
-  showToast('Order ' + order.id + ' berhasil dibuat');
-  Cart.clear();
-  btn.disabled = false;
-  btn.innerHTML = originalText;
-  closeModal('checkoutModal');
-  setTimeout(() => {
-    window.location.href = 'order.html?order=' + order.id;
-  }, 600);
+    console.log('Order saved:', order);
+    showToast('Order ' + order.id + ' berhasil dibuat');
+    Cart.clear();
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    closeModal('checkoutModal');
+    setTimeout(() => {
+      window.location.href = 'order.html?order=' + order.id;
+    }, 600);
+  } catch (e) {
+    console.error('Order error:', e);
+    showToast('Gagal: ' + (e.message || 'Unknown error'));
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
 });
 
 /* ---------- GLOBAL FOOTER FILTER ---------- */
@@ -457,21 +457,22 @@ window.filterFromFooter = function(cat) {
     tab.click();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } else {
-    // Kalo kategori belum ada tab-nya, set langsung
     activeFilter = cat;
     applyFilters();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 };
 
-/* ---------- INIT ---------- */
-document.addEventListener('DOMContentLoaded', () => {
-  renderBanner();
-  renderProducts();
-  renderCategories();
+/* ---------- INIT (ASYNC) ---------- */
+document.addEventListener('DOMContentLoaded', async () => {
+  // Tunggu Supabase client ready dulu
+  if (typeof initSupabase === 'function') initSupabase();
+
+  await renderBanner();
+  await renderProducts();
+  await renderCategories();
   Cart.render();
 
-  // Attach search & sort SETELAH render
   $('#searchInput')?.addEventListener('input', applyFilters);
   $('#sortSelect')?.addEventListener('change', applyFilters);
 });
