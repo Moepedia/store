@@ -4,30 +4,129 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-/* ---------- AUTH GUARD ---------- */
-function showLogin() {
-  $('#loginScreen').classList.remove('hidden');
+/* ---------- HELPERS ---------- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function showError(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function showSuccess(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ---------- SCREEN MANAGEMENT ---------- */
+function showSetup() {
+  $('#setupScreen').classList.remove('hidden');
+  $('#loginScreen').classList.add('hidden');
   $('#adminLayout').style.display = 'none';
 }
+
+function showLogin() {
+  $('#setupScreen').classList.add('hidden');
+  $('#loginScreen').classList.remove('hidden');
+  $('#adminLayout').style.display = 'none';
+  setTimeout(() => $('#loginPassword')?.focus(), 100);
+}
+
 function showAdmin() {
+  $('#setupScreen').classList.add('hidden');
   $('#loginScreen').classList.add('hidden');
   $('#adminLayout').style.display = 'grid';
   renderDashboard();
 }
 
-function checkAuth() {
+async function checkAuth() {
+  // Kalo Supabase belum dikonfigurasi, munculin setup
+  if (!DB.isConfigured()) {
+    showSetup();
+    return;
+  }
   if (DB.isLoggedIn()) showAdmin();
   else showLogin();
 }
 
-$('#loginBtn')?.addEventListener('click', () => {
+/* ---------- SETUP WIZARD ---------- */
+$('#setupTestBtn')?.addEventListener('click', async () => {
+  const url = $('#setupUrl').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+  const key = $('#setupKey').value.trim();
+
+  if (!url || !key) {
+    showError('setupError', 'URL dan key wajib diisi');
+    return;
+  }
+
+  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
+    showError('setupError', 'Format URL salah. Contoh: https://xxxxx.supabase.co');
+    return;
+  }
+
+  // Test koneksi
+  const btn = $('#setupTestBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Testing koneksi...';
+
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { error } = await testClient.from('products').select('id').limit(1);
+
+    // Error "relation does not exist" tetep artinya koneksi berhasil, cuma tabel belum ada
+    if (error && !error.message.includes('does not exist') && !error.message.includes('relation')) {
+      throw new Error(error.message);
+    }
+
+    // Simpan config
+    DB.saveSbConfig({ url, key });
+    showSuccess('setupSuccess', 'Koneksi berhasil! Mengalihkan ke login...');
+    setTimeout(() => showLogin(), 1200);
+  } catch (e) {
+    showError('setupError', 'Koneksi gagal: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
+
+$('#setupSkipBtn')?.addEventListener('click', () => {
+  if (!confirm('Lewati setup? Data akan disimpan di localStorage saja.')) return;
+  showLogin();
+});
+
+/* ---------- LOGIN ---------- */
+$('#loginBtn')?.addEventListener('click', async () => {
   const pw = $('#loginPassword').value;
-  if (DB.login(pw)) {
+  if (!pw) {
+    showError('loginError', 'Masukkan password');
+    return;
+  }
+
+  const btn = $('#loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Memverifikasi...';
+
+  const ok = await DB.verifyPassword(pw);
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Masuk';
+
+  if (ok) {
     $('#loginError').classList.remove('show');
     $('#loginPassword').value = '';
     showAdmin();
   } else {
-    $('#loginError').classList.add('show');
+    showError('loginError', 'Password salah. Coba lagi.');
     $('#loginPassword').value = '';
     $('#loginPassword').focus();
   }
@@ -40,27 +139,29 @@ $('#loginPassword')?.addEventListener('keypress', (e) => {
 $('#logoutBtn')?.addEventListener('click', () => {
   if (!confirm('Logout dari admin panel?')) return;
   DB.logout();
-  showLogin();
+  checkAuth();
 });
 
 /* ---------- TABS ---------- */
 $$('.sidebar-nav button').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     $$('.sidebar-nav button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     $$('.tab-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'dashboard') renderDashboard();
-    if (btn.dataset.tab === 'products') renderProductsTable();
-    if (btn.dataset.tab === 'orders') renderOrdersTable();
-    if (btn.dataset.tab === 'banner') renderBannerPanel();
+
+    if (btn.dataset.tab === 'dashboard') await renderDashboard();
+    if (btn.dataset.tab === 'products') await renderProductsTable();
+    if (btn.dataset.tab === 'orders') await renderOrdersTable();
+    if (btn.dataset.tab === 'banner') await renderBannerPanel();
+    if (btn.dataset.tab === 'settings') await renderSettingsPanel();
   });
 });
 
 /* ---------- DASHBOARD ---------- */
-function renderDashboard() {
-  const products = DB.getProducts();
-  const orders = DB.getOrders();
+async function renderDashboard() {
+  const products = await DB.getProducts();
+  const orders = await DB.getOrders();
   const revenue = orders
     .filter(o => o.status === 'paid' || o.status === 'completed')
     .reduce((s, o) => s + (o.total || 0), 0);
@@ -73,12 +174,12 @@ function renderDashboard() {
 /* ---------- BANNER ---------- */
 let pendingBannerImage = null;
 
-function renderBannerPanel() {
-  const banner = DB.getBanner();
+async function renderBannerPanel() {
+  const banner = await DB.getBanner();
   const wrap = $('#bannerPreviewWrap');
   const linkInput = $('#bannerLinkInput');
 
-  if (banner) {
+  if (banner && banner.image) {
     wrap.innerHTML = `<img src="${banner.image}" class="preview-img" alt="Banner">`;
     linkInput.value = banner.link || '';
     pendingBannerImage = banner.image;
@@ -105,28 +206,28 @@ $('#bannerFile')?.addEventListener('change', (e) => {
   reader.readAsDataURL(file);
 });
 
-$('#saveBannerBtn')?.addEventListener('click', () => {
+$('#saveBannerBtn')?.addEventListener('click', async () => {
   if (!pendingBannerImage) {
     alert('Upload gambar banner dulu');
     return;
   }
-  DB.saveBanner({
+  await DB.saveBanner({
     image: pendingBannerImage,
     link: $('#bannerLinkInput').value.trim()
   });
   alert('Banner tersimpan');
 });
 
-$('#clearBannerBtn')?.addEventListener('click', () => {
+$('#clearBannerBtn')?.addEventListener('click', async () => {
   if (!confirm('Hapus banner?')) return;
-  DB.clearBanner();
+  await DB.clearBanner();
   pendingBannerImage = null;
   renderBannerPanel();
 });
 
 /* ---------- PRODUCTS TABLE ---------- */
-function renderProductsTable() {
-  const products = DB.getProducts();
+async function renderProductsTable() {
+  const products = await DB.getProducts();
   const tbody = $('#productsTable');
 
   if (products.length === 0) {
@@ -147,7 +248,7 @@ function renderProductsTable() {
           </div>
         </div>
       </td>
-      <td>${escapeHtml(p.categoryLabel || p.category || '-')}</td>
+      <td>${escapeHtml(p.category_label || p.categoryLabel || p.category || '-')}</td>
       <td style="color:var(--text);font-weight:500">${rupiah(p.price)}</td>
       <td>
         ${p.badge
@@ -173,15 +274,15 @@ function openProductModal(mode, product) {
   $('#pId').value = product?.id || '';
   $('#pTitle').value = product?.title || '';
   $('#pCategory').value = product?.category || 'source-code';
-  $('#pCategoryLabel').value = product?.categoryLabel || '';
+  $('#pCategoryLabel').value = product?.category_label || product?.categoryLabel || '';
   $('#pPrice').value = product?.price || '';
-  $('#pOldPrice').value = product?.oldPrice || '';
-  $('#pPriceSuffix').value = product?.priceSuffix || '';
+  $('#pOldPrice').value = product?.old_price || product?.oldPrice || '';
+  $('#pPriceSuffix').value = product?.price_suffix || product?.priceSuffix || '';
   $('#pBadge').value = product?.badge || '';
   $('#pRating').value = product?.rating || '5.0';
   $('#pSold').value = product?.sold || 0;
-  $('#pDesc').value = product?.desc || '';
-  $('#pFullDesc').value = product?.fullDesc || '';
+  $('#pDesc').value = product?.desc_text || product?.desc || '';
+  $('#pFullDesc').value = product?.full_desc || product?.fullDesc || '';
   $('#pFeatures').value = product?.features || '';
   $('#pImageFile').value = '';
 
@@ -221,7 +322,7 @@ $('#pImageFile')?.addEventListener('change', (e) => {
   reader.readAsDataURL(file);
 });
 
-$('#saveProductBtn')?.addEventListener('click', () => {
+$('#saveProductBtn')?.addEventListener('click', async () => {
   const title = $('#pTitle').value.trim();
   const price = parseInt($('#pPrice').value, 10);
 
@@ -233,43 +334,43 @@ $('#saveProductBtn')?.addEventListener('click', () => {
   const data = {
     title,
     category: $('#pCategory').value,
-    categoryLabel: $('#pCategoryLabel').value.trim() || $('#pCategory').value,
+    category_label: $('#pCategoryLabel').value.trim() || $('#pCategory').value,
     price,
-    oldPrice: parseInt($('#pOldPrice').value, 10) || null,
-    priceSuffix: $('#pPriceSuffix').value.trim() || '',
+    old_price: parseInt($('#pOldPrice').value, 10) || null,
+    price_suffix: $('#pPriceSuffix').value.trim() || '',
     badge: $('#pBadge').value || '',
     rating: $('#pRating').value.trim() || '5.0',
     sold: parseInt($('#pSold').value, 10) || 0,
-    desc: $('#pDesc').value.trim(),
-    fullDesc: $('#pFullDesc').value.trim(),
+    desc_text: $('#pDesc').value.trim(),
+    full_desc: $('#pFullDesc').value.trim(),
     features: $('#pFeatures').value.trim(),
     image: pendingProductImage || ''
   };
 
   const id = $('#pId').value;
-  if (id) DB.updateProduct(id, data);
-  else DB.addProduct(data);
+  if (id) await DB.updateProduct(id, data);
+  else await DB.addProduct(data);
 
   closeProductModal();
-  renderProductsTable();
-  renderDashboard();
+  await renderProductsTable();
+  await renderDashboard();
 });
 
-window.editProduct = function(id) {
-  const product = DB.getProduct(id);
+window.editProduct = async function(id) {
+  const product = await DB.getProduct(id);
   if (product) openProductModal('edit', product);
 };
 
-window.deleteProductConfirm = function(id) {
+window.deleteProductConfirm = async function(id) {
   if (!confirm('Hapus produk ini?')) return;
-  DB.deleteProduct(id);
-  renderProductsTable();
-  renderDashboard();
+  await DB.deleteProduct(id);
+  await renderProductsTable();
+  await renderDashboard();
 };
 
 /* ---------- ORDERS TABLE ---------- */
-function renderOrdersTable() {
-  const orders = DB.getOrders();
+async function renderOrdersTable() {
+  const orders = await DB.getOrders();
   const tbody = $('#ordersTable');
 
   if (orders.length === 0) {
@@ -281,12 +382,12 @@ function renderOrdersTable() {
     <tr>
       <td style="color:var(--text);font-weight:500">${escapeHtml(o.id)}</td>
       <td>
-        <div style="color:var(--text)">${escapeHtml(o.customer?.name || '-')}</div>
-        <div style="font-size:11.5px;color:var(--text-3)">${escapeHtml(o.customer?.phone || '')}</div>
+        <div style="color:var(--text)">${escapeHtml(o.customer_name || o.customer?.name || '-')}</div>
+        <div style="font-size:11.5px;color:var(--text-3)">${escapeHtml(o.customer_phone || o.customer?.phone || '')}</div>
       </td>
       <td style="color:var(--text);font-weight:500">${rupiah(o.total)}</td>
       <td><span class="status-pill ${o.status}">${DB.statusLabel(o.status)}</span></td>
-      <td>${formatDate(o.createdAt)}</td>
+      <td>${formatDate(o.created_at || o.createdAt)}</td>
       <td>
         <div class="table-actions">
           <button class="btn btn-secondary btn-sm" onclick="viewOrder('${o.id}')">Detail</button>
@@ -304,32 +405,32 @@ function renderOrdersTable() {
   `).join('');
 }
 
-window.changeStatus = function(id, status) {
+window.changeStatus = async function(id, status) {
   if (!status) return;
-  DB.updateOrderStatus(id, status);
-  renderOrdersTable();
-  renderDashboard();
+  await DB.updateOrderStatus(id, status);
+  await renderOrdersTable();
+  await renderDashboard();
 };
 
-window.viewOrder = function(id) {
-  const order = DB.findOrder(id);
+window.viewOrder = async function(id) {
+  const order = await DB.findOrder(id);
   if (!order) return;
-  const items = order.items.map(i => `${i.product} × ${i.qty} = ${rupiah(i.price * i.qty)}`).join('\n');
+  const items = (order.items || []).map(i => `${i.product} × ${i.qty} = ${rupiah(i.price * i.qty)}`).join('\n');
   alert(
     `Order ID: ${order.id}\n` +
-    `Customer: ${order.customer.name}\n` +
-    `Email: ${order.customer.email}\n` +
-    `Phone: ${order.customer.phone}\n` +
+    `Customer: ${order.customer_name || order.customer?.name || '-'}\n` +
+    `Email: ${order.customer_email || order.customer?.email || '-'}\n` +
+    `Phone: ${order.customer_phone || order.customer?.phone || '-'}\n` +
     `Status: ${DB.statusLabel(order.status)}\n` +
-    `Tanggal: ${formatDate(order.createdAt)}\n\n` +
+    `Tanggal: ${formatDate(order.created_at || order.createdAt)}\n\n` +
     `Items:\n${items}\n\n` +
     `Total: ${rupiah(order.total)}`
   );
 };
 
 /* ---------- EXPORT CSV ---------- */
-$('#exportOrdersBtn')?.addEventListener('click', () => {
-  const orders = DB.getOrders();
+$('#exportOrdersBtn')?.addEventListener('click', async () => {
+  const orders = await DB.getOrders();
   if (orders.length === 0) {
     alert('Belum ada pesanan untuk di-export');
     return;
@@ -337,13 +438,13 @@ $('#exportOrdersBtn')?.addEventListener('click', () => {
 
   const headers = ['Order ID', 'Tanggal', 'Nama', 'Email', 'Phone', 'Produk', 'Total', 'Status'];
   const rows = orders.map(o => {
-    const items = o.items.map(i => `${i.product} x${i.qty}`).join('; ');
+    const items = (o.items || []).map(i => `${i.product} x${i.qty}`).join('; ');
     return [
       o.id,
-      formatDate(o.createdAt),
-      o.customer?.name || '',
-      o.customer?.email || '',
-      o.customer?.phone || '',
+      formatDate(o.created_at || o.createdAt),
+      o.customer_name || o.customer?.name || '',
+      o.customer_email || o.customer?.email || '',
+      o.customer_phone || o.customer?.phone || '',
       items,
       o.total,
       DB.statusLabel(o.status)
@@ -363,12 +464,124 @@ $('#exportOrdersBtn')?.addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-/* ---------- HELPERS ---------- */
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
+/* ---------- SETTINGS PANEL ---------- */
+async function renderSettingsPanel() {
+  // Connection status
+  const configured = DB.isConfigured();
+  const cfg = DB.getSbConfig();
+  const statusWrap = $('#connStatusWrap');
+
+  if (configured) {
+    statusWrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="connection-badge online"><span class="dot"></span>Terhubung ke Supabase</span>
+        <span style="font-size:12.5px;color:var(--text-3)">${escapeHtml(cfg.url)}</span>
+      </div>
+    `;
+  } else {
+    statusWrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="connection-badge offline"><span class="dot"></span>Menggunakan localStorage</span>
+        <span style="font-size:12.5px;color:var(--text-3)">Supabase belum dikonfigurasi</span>
+      </div>
+    `;
+  }
+
+  // Isi field Supabase
+  $('#sbUrl').value = cfg?.url || '';
+  $('#sbKey').value = cfg?.key || '';
 }
+
+/* ---------- CHANGE PASSWORD ---------- */
+$('#changePasswordBtn')?.addEventListener('click', async () => {
+  const oldPw = $('#oldPassword').value;
+  const newPw = $('#newPassword').value;
+  const confirmPw = $('#confirmPassword').value;
+
+  if (!oldPw || !newPw || !confirmPw) {
+    showError('pwError', 'Semua field wajib diisi');
+    return;
+  }
+
+  if (newPw.length < 6) {
+    showError('pwError', 'Password baru minimal 6 karakter');
+    return;
+  }
+
+  if (newPw !== confirmPw) {
+    showError('pwError', 'Konfirmasi password tidak cocok');
+    return;
+  }
+
+  // Verify password lama
+  const currentPw = await DB.getAdminPassword();
+  if (oldPw !== currentPw) {
+    showError('pwError', 'Password lama salah');
+    return;
+  }
+
+  // Simpan password baru
+  const btn = $('#changePasswordBtn');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
+  await DB.setAdminPassword(newPw);
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Simpan Password Baru';
+
+  $('#oldPassword').value = '';
+  $('#newPassword').value = '';
+  $('#confirmPassword').value = '';
+
+  showSuccess('pwSuccess', 'Password berhasil diubah!');
+});
+
+/* ---------- SAVE SUPABASE CONFIG ---------- */
+$('#saveSbBtn')?.addEventListener('click', async () => {
+  const url = $('#sbUrl').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+  const key = $('#sbKey').value.trim();
+
+  if (!url || !key) {
+    alert('URL dan key wajib diisi');
+    return;
+  }
+
+  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
+    alert('Format URL salah. Contoh: https://xxxxx.supabase.co');
+    return;
+  }
+
+  const btn = $('#saveSbBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { error } = await testClient.from('products').select('id').limit(1);
+
+    if (error && !error.message.includes('does not exist') && !error.message.includes('relation')) {
+      throw new Error(error.message);
+    }
+
+    DB.saveSbConfig({ url, key });
+    alert('Koneksi berhasil! Konfigurasi tersimpan.');
+    await renderSettingsPanel();
+  } catch (e) {
+    alert('Koneksi gagal: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
+
+$('#clearSbBtn')?.addEventListener('click', async () => {
+  if (!confirm('Hapus konfigurasi Supabase? Data akan kembali ke localStorage.')) return;
+  DB.clearSbConfig();
+  await renderSettingsPanel();
+  alert('Konfigurasi Supabase dihapus.');
+});
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
