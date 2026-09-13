@@ -1,5 +1,5 @@
 /* ============================================================
-   ADMIN LOGIC
+   ADMIN LOGIC — Supabase Auth + RLS
 ============================================================ */
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -38,7 +38,7 @@ function showLogin() {
   $('#setupScreen').classList.add('hidden');
   $('#loginScreen').classList.remove('hidden');
   $('#adminLayout').style.display = 'none';
-  setTimeout(() => $('#loginPassword')?.focus(), 100);
+  setTimeout(() => $('#loginEmail')?.focus(), 100);
 }
 
 function showAdmin() {
@@ -49,12 +49,12 @@ function showAdmin() {
 }
 
 async function checkAuth() {
-  // Kalo Supabase belum dikonfigurasi, munculin setup
   if (!DB.isConfigured()) {
     showSetup();
     return;
   }
-  if (DB.isLoggedIn()) showAdmin();
+  const loggedIn = await DB.isLoggedIn();
+  if (loggedIn) showAdmin();
   else showLogin();
 }
 
@@ -73,7 +73,6 @@ $('#setupTestBtn')?.addEventListener('click', async () => {
     return;
   }
 
-  // Test koneksi
   const btn = $('#setupTestBtn');
   const originalText = btn.innerHTML;
   btn.disabled = true;
@@ -83,12 +82,10 @@ $('#setupTestBtn')?.addEventListener('click', async () => {
     const testClient = window.supabase.createClient(url, key);
     const { error } = await testClient.from('products').select('id').limit(1);
 
-    // Error "relation does not exist" tetep artinya koneksi berhasil, cuma tabel belum ada
     if (error && !error.message.includes('does not exist') && !error.message.includes('relation')) {
       throw new Error(error.message);
     }
 
-    // Simpan config
     DB.saveSbConfig({ url, key });
     showSuccess('setupSuccess', 'Koneksi berhasil! Mengalihkan ke login...');
     setTimeout(() => showLogin(), 1200);
@@ -105,28 +102,41 @@ $('#setupSkipBtn')?.addEventListener('click', () => {
   showLogin();
 });
 
-/* ---------- LOGIN ---------- */
+/* ---------- LOGIN (Supabase Auth / fallback) ---------- */
 $('#loginBtn')?.addEventListener('click', async () => {
+  const email = $('#loginEmail').value.trim();
   const pw = $('#loginPassword').value;
-  if (!pw) {
-    showError('loginError', 'Masukkan password');
+
+  if (!email || !pw) {
+    showError('loginError', 'Email dan password wajib diisi');
     return;
   }
 
   const btn = $('#loginBtn');
+  const originalHTML = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = 'Memverifikasi...';
 
-  const ok = await DB.verifyPassword(pw);
-  btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Masuk';
+  try {
+    if (DB.client()) {
+      // Pake Supabase Auth
+      await DB.login(email, pw);
+    } else {
+      // Fallback localStorage
+      const ok = await DB.verifyPassword(pw);
+      if (!ok) throw new Error('Password salah');
+    }
 
-  if (ok) {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
     $('#loginError').classList.remove('show');
+    $('#loginEmail').value = '';
     $('#loginPassword').value = '';
     showAdmin();
-  } else {
-    showError('loginError', 'Password salah. Coba lagi.');
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+    showError('loginError', e.message || 'Email atau password salah');
     $('#loginPassword').value = '';
     $('#loginPassword').focus();
   }
@@ -136,9 +146,9 @@ $('#loginPassword')?.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') $('#loginBtn').click();
 });
 
-$('#logoutBtn')?.addEventListener('click', () => {
+$('#logoutBtn')?.addEventListener('click', async () => {
   if (!confirm('Logout dari admin panel?')) return;
-  DB.logout();
+  await DB.logout();
   checkAuth();
 });
 
@@ -211,11 +221,15 @@ $('#saveBannerBtn')?.addEventListener('click', async () => {
     alert('Upload gambar banner dulu');
     return;
   }
-  await DB.saveBanner({
-    image: pendingBannerImage,
-    link: $('#bannerLinkInput').value.trim()
-  });
-  alert('Banner tersimpan');
+  try {
+    await DB.saveBanner({
+      image: pendingBannerImage,
+      link: $('#bannerLinkInput').value.trim()
+    });
+    alert('Banner tersimpan');
+  } catch (e) {
+    alert('Gagal simpan banner: ' + e.message);
+  }
 });
 
 $('#clearBannerBtn')?.addEventListener('click', async () => {
@@ -347,13 +361,26 @@ $('#saveProductBtn')?.addEventListener('click', async () => {
     image: pendingProductImage || ''
   };
 
-  const id = $('#pId').value;
-  if (id) await DB.updateProduct(id, data);
-  else await DB.addProduct(data);
+  const btn = $('#saveProductBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
 
-  closeProductModal();
-  await renderProductsTable();
-  await renderDashboard();
+  try {
+    const id = $('#pId').value;
+    if (id) await DB.updateProduct(id, data);
+    else await DB.addProduct(data);
+
+    closeProductModal();
+    await renderProductsTable();
+    await renderDashboard();
+  } catch (e) {
+    alert('Gagal simpan produk: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 });
 
 window.editProduct = async function(id) {
@@ -363,9 +390,13 @@ window.editProduct = async function(id) {
 
 window.deleteProductConfirm = async function(id) {
   if (!confirm('Hapus produk ini?')) return;
-  await DB.deleteProduct(id);
-  await renderProductsTable();
-  await renderDashboard();
+  try {
+    await DB.deleteProduct(id);
+    await renderProductsTable();
+    await renderDashboard();
+  } catch (e) {
+    alert('Gagal hapus produk: ' + e.message);
+  }
 };
 
 /* ---------- ORDERS TABLE ---------- */
@@ -407,9 +438,13 @@ async function renderOrdersTable() {
 
 window.changeStatus = async function(id, status) {
   if (!status) return;
-  await DB.updateOrderStatus(id, status);
-  await renderOrdersTable();
-  await renderDashboard();
+  try {
+    await DB.updateOrderStatus(id, status);
+    await renderOrdersTable();
+    await renderDashboard();
+  } catch (e) {
+    alert('Gagal ubah status: ' + e.message);
+  }
 };
 
 window.viewOrder = async function(id) {
@@ -466,10 +501,10 @@ $('#exportOrdersBtn')?.addEventListener('click', async () => {
 
 /* ---------- SETTINGS PANEL ---------- */
 async function renderSettingsPanel() {
-  // Connection status
   const configured = DB.isConfigured();
   const cfg = DB.getSbConfig();
   const statusWrap = $('#connStatusWrap');
+  const user = await DB.getUser();
 
   if (configured) {
     statusWrap.innerHTML = `
@@ -477,6 +512,9 @@ async function renderSettingsPanel() {
         <span class="connection-badge online"><span class="dot"></span>Terhubung ke Supabase</span>
         <span style="font-size:12.5px;color:var(--text-3)">${escapeHtml(cfg.url)}</span>
       </div>
+      ${user ? `<div style="margin-top:12px;font-size:13px;color:var(--text-2)">
+        <strong>Login sebagai:</strong> ${escapeHtml(user.email)}
+      </div>` : ''}
     `;
   } else {
     statusWrap.innerHTML = `
@@ -487,55 +525,9 @@ async function renderSettingsPanel() {
     `;
   }
 
-  // Isi field Supabase
   $('#sbUrl').value = cfg?.url || '';
   $('#sbKey').value = cfg?.key || '';
 }
-
-/* ---------- CHANGE PASSWORD ---------- */
-$('#changePasswordBtn')?.addEventListener('click', async () => {
-  const oldPw = $('#oldPassword').value;
-  const newPw = $('#newPassword').value;
-  const confirmPw = $('#confirmPassword').value;
-
-  if (!oldPw || !newPw || !confirmPw) {
-    showError('pwError', 'Semua field wajib diisi');
-    return;
-  }
-
-  if (newPw.length < 6) {
-    showError('pwError', 'Password baru minimal 6 karakter');
-    return;
-  }
-
-  if (newPw !== confirmPw) {
-    showError('pwError', 'Konfirmasi password tidak cocok');
-    return;
-  }
-
-  // Verify password lama
-  const currentPw = await DB.getAdminPassword();
-  if (oldPw !== currentPw) {
-    showError('pwError', 'Password lama salah');
-    return;
-  }
-
-  // Simpan password baru
-  const btn = $('#changePasswordBtn');
-  btn.disabled = true;
-  btn.textContent = 'Menyimpan...';
-
-  await DB.setAdminPassword(newPw);
-
-  btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Simpan Password Baru';
-
-  $('#oldPassword').value = '';
-  $('#newPassword').value = '';
-  $('#confirmPassword').value = '';
-
-  showSuccess('pwSuccess', 'Password berhasil diubah!');
-});
 
 /* ---------- SAVE SUPABASE CONFIG ---------- */
 $('#saveSbBtn')?.addEventListener('click', async () => {
@@ -566,8 +558,9 @@ $('#saveSbBtn')?.addEventListener('click', async () => {
     }
 
     DB.saveSbConfig({ url, key });
-    alert('Koneksi berhasil! Konfigurasi tersimpan.');
-    await renderSettingsPanel();
+    alert('Koneksi berhasil! Konfigurasi tersimpan. Silakan login ulang.');
+    await DB.logout();
+    checkAuth();
   } catch (e) {
     alert('Koneksi gagal: ' + e.message);
   } finally {
@@ -579,7 +572,8 @@ $('#saveSbBtn')?.addEventListener('click', async () => {
 $('#clearSbBtn')?.addEventListener('click', async () => {
   if (!confirm('Hapus konfigurasi Supabase? Data akan kembali ke localStorage.')) return;
   DB.clearSbConfig();
-  await renderSettingsPanel();
+  await DB.logout();
+  checkAuth();
   alert('Konfigurasi Supabase dihapus.');
 });
 
