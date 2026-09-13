@@ -12,10 +12,21 @@ const DB = {
 
   /* ---------- SUPABASE CONFIG ---------- */
   getSbConfig() {
-    try {
-      return JSON.parse(localStorage.getItem(this.KEYS.SB_CONFIG) || 'null');
-    } catch { return null; }
-  },
+  // Baca dari env Vite (production)
+  const envUrl = import.meta.env?.VITE_SUPABASE_URL;
+  const envKey = import.meta.env?.VITE_SUPABASE_KEY;
+
+  if (envUrl && envKey) {
+    return { url: envUrl, key: envKey };
+  }
+
+  // Fallback ke localStorage (buat admin override)
+  try {
+    const manual = JSON.parse(localStorage.getItem(this.KEYS.SB_CONFIG) || 'null');
+    if (manual && manual.url && manual.key) return manual;
+  } catch {}
+  return null;
+},
 
   saveSbConfig(config) {
     localStorage.setItem(this.KEYS.SB_CONFIG, JSON.stringify(config));
