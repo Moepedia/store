@@ -1,6 +1,7 @@
 /* ============================================================
-   DATA LAYER — Supabase + localStorage fallback
-   Konfigurasi Supabase & password admin disimpan di localStorage
+   DATA LAYER — Supabase Auth + RLS proper
+   Login pake Supabase Auth (email + password)
+   Read publik, write cuma authenticated
 ============================================================ */
 
 const DB = {
@@ -8,7 +9,6 @@ const DB = {
     PRODUCTS: 'rexnh_products',
     BANNER: 'rexnh_banner',
     ORDERS: 'rexnh_orders',
-    AUTH: 'rexnh_admin_auth',
     SB_CONFIG: 'rexnh_supabase_config'
   },
 
@@ -21,7 +21,6 @@ const DB = {
 
   saveSbConfig(config) {
     localStorage.setItem(this.KEYS.SB_CONFIG, JSON.stringify(config));
-    // Re-init client
     initSupabase();
   },
 
@@ -35,42 +34,55 @@ const DB = {
     return !!(cfg && cfg.url && cfg.key);
   },
 
-  /* ---------- SUPABASE CLIENT ---------- */
   client() {
     return supabaseClient;
   },
 
-  /* ---------- AUTH (password disimpan di Supabase / fallback localStorage) ---------- */
-  async getAdminPassword() {
-    // Coba dari Supabase dulu
+  /* ---------- AUTH (Supabase Auth) ---------- */
+  async getSession() {
+    if (!supabaseClient) return null;
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      return data.session;
+    } catch (e) { return null; }
+  },
+
+  async getUser() {
+    if (!supabaseClient) return null;
+    try {
+      const { data } = await supabaseClient.auth.getUser();
+      return data.user;
+    } catch (e) { return null; }
+  },
+
+  async login(email, password) {
+    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+    return data.user;
+  },
+
+  async logout() {
     if (supabaseClient) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('settings')
-          .select('value')
-          .eq('key', 'admin_password')
-          .single();
-        if (!error && data?.value) return data.value;
-      } catch (e) { /* ignore */ }
+      await supabaseClient.auth.signOut();
     }
-    // Fallback localStorage
+  },
+
+  async isLoggedIn() {
+    if (!supabaseClient) return false;
+    const session = await this.getSession();
+    return !!session;
+  },
+
+  /* ---------- LEGACY AUTH (fallback kalo Supabase gak dikonfigurasi) ---------- */
+  async getAdminPassword() {
     return localStorage.getItem('rexnh_admin_password') || 'rexnh2026';
   },
 
   async setAdminPassword(newPassword) {
-    // Simpan ke Supabase
-    if (supabaseClient) {
-      try {
-        const { error } = await supabaseClient
-          .from('settings')
-          .upsert([{ key: 'admin_password', value: newPassword }]);
-        if (!error) {
-          localStorage.setItem('rexnh_admin_password', newPassword);
-          return true;
-        }
-      } catch (e) { /* ignore */ }
-    }
-    // Fallback localStorage
     localStorage.setItem('rexnh_admin_password', newPassword);
     return true;
   },
@@ -78,18 +90,10 @@ const DB = {
   async verifyPassword(password) {
     const stored = await this.getAdminPassword();
     if (password === stored) {
-      sessionStorage.setItem(this.KEYS.AUTH, 'true');
+      sessionStorage.setItem('rexnh_admin_auth', 'true');
       return true;
     }
     return false;
-  },
-
-  isLoggedIn() {
-    return sessionStorage.getItem(this.KEYS.AUTH) === 'true';
-  },
-
-  logout() {
-    sessionStorage.removeItem(this.KEYS.AUTH);
   },
 
   /* ---------- PRODUCTS ---------- */
@@ -113,14 +117,13 @@ const DB = {
     product.created_at = new Date().toISOString();
 
     if (supabaseClient) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('products')
-          .insert([product])
-          .select()
-          .single();
-        if (!error && data) return data;
-      } catch (e) { /* fallback */ }
+      const { data, error } = await supabaseClient
+        .from('products')
+        .insert([product])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     }
 
     const products = JSON.parse(localStorage.getItem(this.KEYS.PRODUCTS) || '[]');
@@ -133,15 +136,14 @@ const DB = {
     data.updated_at = new Date().toISOString();
 
     if (supabaseClient) {
-      try {
-        const { data: updated, error } = await supabaseClient
-          .from('products')
-          .update(data)
-          .eq('id', id)
-          .select()
-          .single();
-        if (!error && updated) return updated;
-      } catch (e) { /* fallback */ }
+      const { data: updated, error } = await supabaseClient
+        .from('products')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated;
     }
 
     const products = JSON.parse(localStorage.getItem(this.KEYS.PRODUCTS) || '[]');
@@ -156,9 +158,9 @@ const DB = {
 
   async deleteProduct(id) {
     if (supabaseClient) {
-      try {
-        await supabaseClient.from('products').delete().eq('id', id);
-      } catch (e) { /* ignore */ }
+      const { error } = await supabaseClient.from('products').delete().eq('id', id);
+      if (error) throw error;
+      return;
     }
     const products = JSON.parse(localStorage.getItem(this.KEYS.PRODUCTS) || '[]');
     localStorage.setItem(this.KEYS.PRODUCTS, JSON.stringify(products.filter(p => p.id !== id)));
@@ -201,19 +203,16 @@ const DB = {
     banner.updated_at = new Date().toISOString();
 
     if (supabaseClient) {
-      try {
-        const { error } = await supabaseClient.from('banner').upsert([banner]);
-        if (!error) return;
-      } catch (e) { /* fallback */ }
+      const { error } = await supabaseClient.from('banner').upsert([banner]);
+      if (error) throw error;
+      return;
     }
     localStorage.setItem(this.KEYS.BANNER, JSON.stringify(banner));
   },
 
   async clearBanner() {
     if (supabaseClient) {
-      try {
-        await supabaseClient.from('banner').delete().eq('id', 1);
-      } catch (e) { /* ignore */ }
+      await supabaseClient.from('banner').delete().eq('id', 1);
     }
     localStorage.removeItem(this.KEYS.BANNER);
   },
@@ -251,14 +250,13 @@ const DB = {
     };
 
     if (supabaseClient) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('orders')
-          .insert([dbOrder])
-          .select()
-          .single();
-        if (!error && data) return data;
-      } catch (e) { /* fallback */ }
+      const { data, error } = await supabaseClient
+        .from('orders')
+        .insert([dbOrder])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     }
 
     const orders = JSON.parse(localStorage.getItem(this.KEYS.ORDERS) || '[]');
@@ -269,13 +267,12 @@ const DB = {
 
   async updateOrderStatus(id, status) {
     if (supabaseClient) {
-      try {
-        const { error } = await supabaseClient
-          .from('orders')
-          .update({ status, updated_at: new Date().toISOString() })
-          .eq('id', id);
-        if (!error) return;
-      } catch (e) { /* fallback */ }
+      const { error } = await supabaseClient
+        .from('orders')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      return;
     }
     const orders = JSON.parse(localStorage.getItem(this.KEYS.ORDERS) || '[]');
     const idx = orders.findIndex(o => o.id === id);
@@ -361,7 +358,13 @@ function initSupabase() {
     return;
   }
   try {
-    supabaseClient = window.supabase.createClient(cfg.url, cfg.key);
+    supabaseClient = window.supabase.createClient(cfg.url, cfg.key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
     console.log('[Supabase] Client initialized:', cfg.url);
   } catch (e) {
     console.error('[Supabase] Init failed:', e);
@@ -383,7 +386,7 @@ function formatDate(iso) {
   });
 }
 
-/* ---------- AUTO INIT (setelah DOM ready) ---------- */
+/* ---------- AUTO INIT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
 });
