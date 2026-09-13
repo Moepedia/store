@@ -1,6 +1,8 @@
 /* ============================================================
-   DATA LAYER — Supabase Auth + RLS proper
+   DATA LAYER — Supabase Auth + RLS proper (ES Module)
 ============================================================ */
+
+let supabaseClient = null;
 
 const DB = {
   KEYS: {
@@ -12,21 +14,22 @@ const DB = {
 
   /* ---------- SUPABASE CONFIG ---------- */
   getSbConfig() {
-  // Baca dari env Vite (production)
-  const envUrl = import.meta.env?.VITE_SUPABASE_URL;
-  const envKey = import.meta.env?.VITE_SUPABASE_KEY;
+    // 1. Coba dari env Vite (production)
+    const envUrl = import.meta.env?.VITE_SUPABASE_URL;
+    const envKey = import.meta.env?.VITE_SUPABASE_KEY;
 
-  if (envUrl && envKey) {
-    return { url: envUrl, key: envKey };
-  }
+    if (envUrl && envKey) {
+      return { url: envUrl, key: envKey };
+    }
 
-  // Fallback ke localStorage (buat admin override)
-  try {
-    const manual = JSON.parse(localStorage.getItem(this.KEYS.SB_CONFIG) || 'null');
-    if (manual && manual.url && manual.key) return manual;
-  } catch {}
-  return null;
-},
+    // 2. Fallback ke localStorage (buat admin override)
+    try {
+      const manual = JSON.parse(localStorage.getItem(this.KEYS.SB_CONFIG) || 'null');
+      if (manual && manual.url && manual.key) return manual;
+    } catch {}
+
+    return null;
+  },
 
   saveSbConfig(config) {
     localStorage.setItem(this.KEYS.SB_CONFIG, JSON.stringify(config));
@@ -47,7 +50,7 @@ const DB = {
     return supabaseClient;
   },
 
-  /* ---------- AUTH (Supabase Auth) ---------- */
+  /* ---------- AUTH ---------- */
   async getSession() {
     if (!supabaseClient) return null;
     try {
@@ -86,7 +89,7 @@ const DB = {
     return !!session;
   },
 
-  /* ---------- LEGACY AUTH (fallback) ---------- */
+  /* ---------- LEGACY AUTH ---------- */
   async getAdminPassword() {
     return localStorage.getItem('rexnh_admin_password') || 'rexnh2026';
   },
@@ -357,18 +360,16 @@ const DB = {
 /* ============================================================
    SUPABASE CLIENT INIT
 ============================================================ */
-let supabaseClient = null;
-
 function initSupabase() {
   const cfg = DB.getSbConfig();
   if (!cfg || !cfg.url || !cfg.key) {
     supabaseClient = null;
     console.log('[Supabase] Not configured, using localStorage fallback');
-    return;
+    return null;
   }
   if (!window.supabase) {
     console.warn('[Supabase] SDK not loaded');
-    return;
+    return null;
   }
   try {
     supabaseClient = window.supabase.createClient(cfg.url, cfg.key, {
@@ -379,9 +380,11 @@ function initSupabase() {
       }
     });
     console.log('[Supabase] Client initialized:', cfg.url);
+    return supabaseClient;
   } catch (e) {
     console.error('[Supabase] Init failed:', e);
     supabaseClient = null;
+    return null;
   }
 }
 
@@ -399,6 +402,5 @@ function formatDate(iso) {
   });
 }
 
-/* ---------- AUTO INIT ---------- */
-/* initSupabase() dipanggil dari store.js / admin.js
-   biar gak race condition */
+/* ---------- EXPORTS ---------- */
+export { DB, initSupabase, rupiah, formatDate };
