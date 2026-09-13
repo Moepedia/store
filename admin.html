@@ -255,6 +255,9 @@ tbody tr:hover{background:var(--bg-3)}
 <!-- ============================================================
      LOGIN SCREEN
 ============================================================ -->
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
 <div class="login-screen hidden" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -262,10 +265,14 @@ tbody tr:hover{background:var(--bg-3)}
       Rexnh<span style="color:var(--text-2);font-weight:400">Admin</span>
     </div>
     <p class="login-sub">Masuk untuk mengelola toko</p>
-    <div class="login-error" id="loginError">Password salah. Coba lagi.</div>
+    <div class="login-error" id="loginError">Email atau password salah.</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@rexnhstore.com" autofocus>
+    </div>
     <div class="field">
       <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="Masukkan password admin" autofocus>
+      <input type="password" id="loginPassword" placeholder="Masukkan password">
     </div>
     <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -273,7 +280,7 @@ tbody tr:hover{background:var(--bg-3)}
     </button>
   </div>
 </div>
-
+  
 <!-- ============================================================
      ADMIN LAYOUT
 ============================================================ -->
