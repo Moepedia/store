@@ -1,7 +1,5 @@
 /* ============================================================
    DATA LAYER — Supabase Auth + RLS proper
-   Login pake Supabase Auth (email + password)
-   Read publik, write cuma authenticated
 ============================================================ */
 
 const DB = {
@@ -77,7 +75,7 @@ const DB = {
     return !!session;
   },
 
-  /* ---------- LEGACY AUTH (fallback kalo Supabase gak dikonfigurasi) ---------- */
+  /* ---------- LEGACY AUTH (fallback) ---------- */
   async getAdminPassword() {
     return localStorage.getItem('rexnh_admin_password') || 'rexnh2026';
   },
@@ -105,7 +103,10 @@ const DB = {
           .select('*')
           .order('created_at', { ascending: false });
         if (!error && data) return data;
-      } catch (e) { /* fallback */ }
+        if (error) console.error('[DB] getProducts error:', error.message);
+      } catch (e) {
+        console.error('[DB] getProducts exception:', e);
+      }
     }
     try {
       return JSON.parse(localStorage.getItem(this.KEYS.PRODUCTS) || '[]');
@@ -166,7 +167,7 @@ const DB = {
     localStorage.setItem(this.KEYS.PRODUCTS, JSON.stringify(products.filter(p => p.id !== id)));
   },
 
-    async getProduct(id) {
+  async getProduct(id) {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -182,7 +183,7 @@ const DB = {
   },
 
   /* ---------- BANNER ---------- */
-    async getBanner() {
+  async getBanner() {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -282,7 +283,7 @@ const DB = {
     }
   },
 
-    async findOrder(id) {
+  async findOrder(id) {
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -315,6 +316,7 @@ const DB = {
   /* ---------- CATEGORIES ---------- */
   async getCategories() {
     const products = await this.getProducts();
+    if (!Array.isArray(products)) return [];
     const cats = new Set(products.map(p => p.category).filter(Boolean));
     return Array.from(cats);
   },
@@ -387,6 +389,5 @@ function formatDate(iso) {
 }
 
 /* ---------- AUTO INIT ---------- */
-document.addEventListener('DOMContentLoaded', () => {
-  initSupabase();
-});
+/* initSupabase() dipanggil dari store.js / admin.js
+   biar gak race condition */
