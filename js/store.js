@@ -132,7 +132,7 @@ $$('[data-close-modal]').forEach(el => {
   });
 });
 
-/* ---------- BANNER (ASYNC) ---------- */
+/* ---------- BANNER ---------- */
 async function renderBanner() {
   const banner = await DB.getBanner();
   const section = $('#bannerSection');
@@ -156,7 +156,7 @@ async function renderBanner() {
   }
 }
 
-/* ---------- CATEGORIES (ASYNC) ---------- */
+/* ---------- CATEGORIES ---------- */
 let activeFilter = 'all';
 
 async function renderCategories() {
@@ -186,15 +186,26 @@ async function renderCategories() {
   });
 }
 
-/* ---------- PRODUCTS RENDER (ASYNC) ---------- */
+/* ---------- PRODUCTS RENDER ---------- */
 async function renderProducts() {
   const grid = $('#grid');
   const emptyState = $('#emptyState');
   if (!grid) return;
 
-  const products = await DB.getProducts();
+  let products = [];
+  try {
+    products = await DB.getProducts();
+  } catch (e) {
+    console.error('[Store] getProducts error:', e);
+    products = [];
+  }
 
-  if (!Array.isArray(products) || products.length === 0) {
+  if (!Array.isArray(products)) {
+    console.warn('[Store] products is not array:', products);
+    products = [];
+  }
+
+  if (products.length === 0) {
     grid.innerHTML = '';
     emptyState?.classList.remove('hidden');
     $('#resultCount').textContent = '0 produk';
@@ -382,7 +393,7 @@ $('#checkoutBtn')?.addEventListener('click', () => {
   openModal('checkoutModal');
 });
 
-/* ---------- PAYMENT (ASYNC) ---------- */
+/* ---------- PAYMENT ---------- */
 $('#coPayBtn')?.addEventListener('click', async () => {
   const name = $('#coName').value.trim();
   const email = $('#coEmail').value.trim();
@@ -463,10 +474,15 @@ window.filterFromFooter = function(cat) {
   }
 };
 
-/* ---------- INIT (ASYNC) ---------- */
+/* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Tunggu Supabase client ready dulu
-  if (typeof initSupabase === 'function') initSupabase();
+  // Init Supabase client DULU
+  initSupabase();
+
+  // Kasih waktu microtask biar client settle
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  console.log('[Store] Render start. Client ready:', !!DB.client());
 
   await renderBanner();
   await renderProducts();
