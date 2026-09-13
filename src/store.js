@@ -1,6 +1,8 @@
 /* ============================================================
-   STOREFRONT LOGIC — Fixed async/await
+   STOREFRONT LOGIC — ES Module
 ============================================================ */
+import { DB, initSupabase, rupiah, formatDate } from './data.js';
+
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -476,12 +478,8 @@ window.filterFromFooter = function(cat) {
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Init Supabase client DULU
   initSupabase();
-
-  // Kasih waktu microtask biar client settle
   await new Promise(resolve => setTimeout(resolve, 50));
-
   console.log('[Store] Render start. Client ready:', !!DB.client());
 
   await renderBanner();
