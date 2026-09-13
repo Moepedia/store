@@ -1,6 +1,8 @@
 /* ============================================================
-   ADMIN LOGIC — Supabase Auth + RLS
+   ADMIN LOGIC — Supabase Auth + RLS (ES Module)
 ============================================================ */
+import { DB, initSupabase, rupiah, formatDate } from './data.js';
+
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -576,7 +578,7 @@ $('#clearSbBtn')?.addEventListener('click', async () => {
 });
 
 /* ---------- INIT ---------- */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initSupabase();
-  checkAuth();
+  await checkAuth();
 });
