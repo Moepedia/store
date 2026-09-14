@@ -1,5 +1,5 @@
 /* ============================================================
-   DATA LAYER — Supabase Auth + RLS proper (ES Module)
+   DATA LAYER — Supabase Auth + RLS + Duitku Settings
 ============================================================ */
 
 let supabaseClient = null;
@@ -14,20 +14,13 @@ const DB = {
 
   /* ---------- SUPABASE CONFIG ---------- */
   getSbConfig() {
-    // 1. Coba dari env Vite (production)
     const envUrl = import.meta.env?.VITE_SUPABASE_URL;
     const envKey = import.meta.env?.VITE_SUPABASE_KEY;
-
-    if (envUrl && envKey) {
-      return { url: envUrl, key: envKey };
-    }
-
-    // 2. Fallback ke localStorage (buat admin override)
+    if (envUrl && envKey) return { url: envUrl, key: envKey };
     try {
       const manual = JSON.parse(localStorage.getItem(this.KEYS.SB_CONFIG) || 'null');
       if (manual && manual.url && manual.key) return manual;
     } catch {}
-
     return null;
   },
 
@@ -69,18 +62,13 @@ const DB = {
 
   async login(email, password) {
     if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data.user;
   },
 
   async logout() {
-    if (supabaseClient) {
-      await supabaseClient.auth.signOut();
-    }
+    if (supabaseClient) await supabaseClient.auth.signOut();
   },
 
   async isLoggedIn() {
@@ -106,6 +94,60 @@ const DB = {
       return true;
     }
     return false;
+  },
+
+  /* ---------- SETTINGS (Duitku, dll) ---------- */
+  async getSetting(key) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient
+        .from('settings')
+        .select('value')
+        .eq('key', key)
+        .maybeSingle();
+      if (!error && data) return data.value;
+    } catch (e) { /* ignore */ }
+    return null;
+  },
+
+  async setSetting(key, value) {
+    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert([{ key, value, updated_at: new Date().toISOString() }]);
+    if (error) throw error;
+  },
+
+  async getDuitkuConfig() {
+    if (!supabaseClient) return { merchantCode: '', apiKey: '', env: 'sandbox' };
+    try {
+      const { data, error } = await supabaseClient
+        .from('settings')
+        .select('key, value')
+        .in('key', ['duitku_merchant_code', 'duitku_api_key', 'duitku_env']);
+      if (error) return { merchantCode: '', apiKey: '', env: 'sandbox' };
+      const config = {};
+      (data || []).forEach(r => { config[r.key] = r.value; });
+      return {
+        merchantCode: config.duitku_merchant_code || '',
+        apiKey: config.duitku_api_key || '',
+        env: config.duitku_env || 'sandbox'
+      };
+    } catch (e) {
+      return { merchantCode: '', apiKey: '', env: 'sandbox' };
+    }
+  },
+
+  async saveDuitkuConfig({ merchantCode, apiKey, env }) {
+    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert([
+        { key: 'duitku_merchant_code', value: merchantCode, updated_at: new Date().toISOString() },
+        { key: 'duitku_api_key', value: apiKey, updated_at: new Date().toISOString() },
+        { key: 'duitku_env', value: env, updated_at: new Date().toISOString() }
+      ]);
+    if (error) throw error;
   },
 
   /* ---------- PRODUCTS ---------- */
@@ -335,59 +377,6 @@ const DB = {
     return Array.from(cats);
   },
 
-     /* ---------- SETTINGS (Duitku, dll) ---------- */
-  async getSetting(key) {
-    if (!supabaseClient) return null;
-    try {
-      const { data, error } = await supabaseClient
-        .from('settings')
-        .select('value')
-        .eq('key', key)
-        .maybeSingle();
-      if (!error && data) return data.value;
-    } catch (e) { /* ignore */ }
-    return null;
-  },
-
-  async setSetting(key, value) {
-    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
-    const { error } = await supabaseClient
-      .from('settings')
-      .upsert([{ key, value, updated_at: new Date().toISOString() }]);
-    if (error) throw error;
-  },
-
-  async getDuitkuConfig() {
-    if (!supabaseClient) return null;
-    try {
-      const { data, error } = await supabaseClient
-        .from('settings')
-        .select('key, value')
-        .in('key', ['duitku_merchant_code', 'duitku_api_key', 'duitku_env']);
-      if (error) return null;
-      const config = {};
-      data.forEach(r => { config[r.key] = r.value; });
-      return {
-        merchantCode: config.duitku_merchant_code || '',
-        apiKey: config.duitku_api_key || '',
-        env: config.duitku_env || 'sandbox'
-      };
-    } catch (e) { return null; }
-  },
-
-  async saveDuitkuConfig({ merchantCode, apiKey, env }) {
-    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
-    const updates = [
-      { key: 'duitku_merchant_code', value: merchantCode },
-      { key: 'duitku_api_key', value: apiKey },
-      { key: 'duitku_env', value: env }
-    ];
-    const { error } = await supabaseClient
-      .from('settings')
-      .upsert(updates);
-    if (error) throw error;
-  },
-   
   /* ---------- STATUS HELPERS ---------- */
   statusLabel(status) {
     return {
@@ -417,7 +406,7 @@ function initSupabase() {
   const cfg = DB.getSbConfig();
   if (!cfg || !cfg.url || !cfg.key) {
     supabaseClient = null;
-    console.log('[Supabase] Not configured, using localStorage fallback');
+    console.log('[Supabase] Not configured');
     return null;
   }
   if (!window.supabase) {
@@ -455,5 +444,4 @@ function formatDate(iso) {
   });
 }
 
-/* ---------- EXPORTS ---------- */
 export { DB, initSupabase, rupiah, formatDate };
