@@ -335,6 +335,59 @@ const DB = {
     return Array.from(cats);
   },
 
+     /* ---------- SETTINGS (Duitku, dll) ---------- */
+  async getSetting(key) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient
+        .from('settings')
+        .select('value')
+        .eq('key', key)
+        .maybeSingle();
+      if (!error && data) return data.value;
+    } catch (e) { /* ignore */ }
+    return null;
+  },
+
+  async setSetting(key, value) {
+    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert([{ key, value, updated_at: new Date().toISOString() }]);
+    if (error) throw error;
+  },
+
+  async getDuitkuConfig() {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient
+        .from('settings')
+        .select('key, value')
+        .in('key', ['duitku_merchant_code', 'duitku_api_key', 'duitku_env']);
+      if (error) return null;
+      const config = {};
+      data.forEach(r => { config[r.key] = r.value; });
+      return {
+        merchantCode: config.duitku_merchant_code || '',
+        apiKey: config.duitku_api_key || '',
+        env: config.duitku_env || 'sandbox'
+      };
+    } catch (e) { return null; }
+  },
+
+  async saveDuitkuConfig({ merchantCode, apiKey, env }) {
+    if (!supabaseClient) throw new Error('Supabase belum dikonfigurasi');
+    const updates = [
+      { key: 'duitku_merchant_code', value: merchantCode },
+      { key: 'duitku_api_key', value: apiKey },
+      { key: 'duitku_env', value: env }
+    ];
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert(updates);
+    if (error) throw error;
+  },
+   
   /* ---------- STATUS HELPERS ---------- */
   statusLabel(status) {
     return {
