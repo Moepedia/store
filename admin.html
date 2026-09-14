@@ -509,6 +509,48 @@ tbody tr:hover{background:var(--bg-3)}
       </div>
     </div>
 
+          <!-- Duitku Config -->
+      <div class="panel">
+        <div class="panel-title">Konfigurasi Payment Gateway Duitku</div>
+        <div class="panel-desc">
+          Credential Duitku disimpan di Supabase (tabel <code>settings</code>), bukan di kode atau .env.
+        </div>
+
+        <div class="login-error" id="duitkuError"></div>
+        <div class="login-success" id="duitkuSuccess"></div>
+
+        <div class="field">
+          <label>Merchant Code</label>
+          <input type="text" id="duitkuMerchantCode" placeholder="DXXXX">
+          <div class="field-hint">Dari Duitku Merchant Portal → Project → Merchant Code</div>
+        </div>
+
+        <div class="field">
+          <label>API Key (Merchant Key)</label>
+          <input type="password" id="duitkuApiKey" placeholder="••••••••••••••••">
+          <div class="field-hint">Dari Duitku Merchant Portal → Project → API Key. Jangan share ke siapapun.</div>
+        </div>
+
+        <div class="field">
+          <label>Environment</label>
+          <select id="duitkuEnv">
+            <option value="sandbox">Sandbox (Testing)</option>
+            <option value="production">Production (Live)</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="saveDuitkuBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Simpan Credential Duitku
+          </button>
+          <button class="btn btn-secondary" id="testDuitkuBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Test Koneksi
+          </button>
+        </div>
+      </div>
+    
   </main>
 </div>
 
