@@ -1,8 +1,6 @@
 /* ============================================================
-   Vercel Serverless Function — Callback Duitku
-   POST /api/duitku-callback
+   Vercel Serverless Function — Duitku Callback
 ============================================================ */
-
 const crypto = require('crypto');
 
 async function getApiKey() {
@@ -46,15 +44,8 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   try {
-    // Duitku kirim x-www-form-urlencoded
     const body = req.body || {};
-
-    const merchantCode = body.merchantCode;
-    const amount = body.amount;
-    const merchantOrderId = body.merchantOrderId;
-    const resultCode = body.resultCode;
-    const reference = body.reference;
-    const signature = body.signature;
+    const { merchantCode, amount, merchantOrderId, resultCode, reference, signature } = body;
 
     if (!merchantCode || !amount || !merchantOrderId || !signature) {
       return res.status(400).send('Bad Parameter');
@@ -63,7 +54,6 @@ module.exports = async (req, res) => {
     const apiKey = await getApiKey();
     if (!apiKey) return res.status(500).send('API key not configured');
 
-    // Verifikasi signature
     const stringToSign = merchantCode + amount + merchantOrderId;
     const calcSignature = crypto
       .createHmac('sha256', apiKey)
@@ -75,8 +65,6 @@ module.exports = async (req, res) => {
       return res.status(403).send('Bad Signature');
     }
 
-    // Update status order
-    // resultCode: '00' = success, '01' = failed
     const status = resultCode === '00' ? 'paid' : 'cancelled';
     await updateOrderStatus(merchantOrderId, status, reference);
 
