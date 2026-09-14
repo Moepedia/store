@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel — Rexnh Store</title>
-<link rel="stylesheet" href="src/style.css">
+<link rel="stylesheet" href="/src/style.css">
 <style>
 .admin-layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .sidebar{
@@ -205,9 +205,7 @@ tbody tr:hover{background:var(--bg-3)}
 </head>
 <body>
 
-<!-- ============================================================
-     SETUP WIZARD — muncul kalo Supabase belum dikonfigurasi
-============================================================ -->
+<!-- SETUP WIZARD -->
 <div class="login-screen hidden" id="setupScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -252,15 +250,7 @@ tbody tr:hover{background:var(--bg-3)}
   </div>
 </div>
 
-<!-- ============================================================
-     LOGIN SCREEN
-============================================================ -->
-<!-- ============================================================
-     LOGIN SCREEN
-============================================================ -->
-<!-- ============================================================
-     LOGIN SCREEN
-============================================================ -->
+<!-- LOGIN SCREEN -->
 <div class="login-screen hidden" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -283,10 +273,8 @@ tbody tr:hover{background:var(--bg-3)}
     </button>
   </div>
 </div>
-  
-<!-- ============================================================
-     ADMIN LAYOUT
-============================================================ -->
+
+<!-- ADMIN LAYOUT -->
 <div class="admin-layout" id="adminLayout" style="display:none">
 
   <aside class="sidebar">
@@ -450,44 +438,20 @@ tbody tr:hover{background:var(--bg-3)}
     <div class="tab-panel" id="tab-settings">
       <div class="admin-header">
         <h1>Settings</h1>
-        <p>Kelola password admin & koneksi database</p>
+        <p>Kelola koneksi database & payment gateway</p>
       </div>
 
       <!-- Status koneksi -->
       <div class="panel">
         <div class="panel-title">Status Koneksi Database</div>
-        <div class="panel-desc">Supabase sebagai database utama, localStorage sebagai fallback</div>
+        <div class="panel-desc">Supabase sebagai database utama</div>
         <div id="connStatusWrap"></div>
-      </div>
-
-      <!-- Ganti password -->
-      <div class="panel">
-        <div class="panel-title">Ganti Password Admin</div>
-        <div class="panel-desc">Password disimpan di database Supabase (tabel <code>settings</code>)</div>
-        <div class="login-error" id="pwError"></div>
-        <div class="login-success" id="pwSuccess"></div>
-        <div class="field">
-          <label>Password Lama</label>
-          <input type="password" id="oldPassword" placeholder="Masukkan password lama">
-        </div>
-        <div class="field">
-          <label>Password Baru</label>
-          <input type="password" id="newPassword" placeholder="Minimal 6 karakter">
-        </div>
-        <div class="field">
-          <label>Konfirmasi Password Baru</label>
-          <input type="password" id="confirmPassword" placeholder="Ulangi password baru">
-        </div>
-        <button class="btn btn-primary" id="changePasswordBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Simpan Password Baru
-        </button>
       </div>
 
       <!-- Supabase config -->
       <div class="panel">
         <div class="panel-title">Konfigurasi Supabase</div>
-        <div class="panel-desc">Ubah URL & key kapan saja. Kosongkan untuk kembali ke localStorage.</div>
+        <div class="panel-desc">Ubah URL & key kapan saja.</div>
         <div class="field">
           <label>Supabase Project URL</label>
           <input type="url" id="sbUrl" placeholder="https://xxxxx.supabase.co">
@@ -507,9 +471,8 @@ tbody tr:hover{background:var(--bg-3)}
           </button>
         </div>
       </div>
-    </div>
 
-          <!-- Duitku Config -->
+      <!-- Duitku Config -->
       <div class="panel">
         <div class="panel-title">Konfigurasi Payment Gateway Duitku</div>
         <div class="panel-desc">
@@ -528,7 +491,7 @@ tbody tr:hover{background:var(--bg-3)}
         <div class="field">
           <label>API Key (Merchant Key)</label>
           <input type="password" id="duitkuApiKey" placeholder="••••••••••••••••">
-          <div class="field-hint">Dari Duitku Merchant Portal → Project → API Key. Jangan share ke siapapun.</div>
+          <div class="field-hint">Dari Duitku Merchant Portal → Project → API Key</div>
         </div>
 
         <div class="field">
@@ -550,7 +513,8 @@ tbody tr:hover{background:var(--bg-3)}
           </button>
         </div>
       </div>
-    
+    </div>
+
   </main>
 </div>
 
@@ -647,7 +611,6 @@ tbody tr:hover{background:var(--bg-3)}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="module" src="/src/data.js"></script>
 <script type="module" src="/src/admin.js"></script>
 </body>
 </html>
