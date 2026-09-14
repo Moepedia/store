@@ -1,8 +1,7 @@
 /* ============================================================
-   Vercel Serverless Function — Create Invoice Duitku
-   Credential dibaca dari Supabase tabel settings
+   Vercel Serverless Function — Create Invoice Duitku (ESM)
 ============================================================ */
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 async function getDuitkuConfig() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -38,7 +37,7 @@ async function getDuitkuConfig() {
   };
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -132,4 +131,4 @@ module.exports = async (req, res) => {
     console.error('Server error:', err);
     return res.status(500).json({ error: err.message });
   }
-};
+}
