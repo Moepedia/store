@@ -9,6 +9,8 @@ export default defineConfig({
         admin: resolve(__dirname, 'admin.html'),
         order: resolve(__dirname, 'order.html')
       }
-    }
+    },
+    outDir: 'dist',
+    emptyOutDir: true
   }
 });
