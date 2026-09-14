@@ -1,28 +1,51 @@
 /* ============================================================
-   Vercel Serverless Function — Create Invoice Duitku (ESM)
+   Vercel Serverless Function — Create Invoice Duitku
+   CommonJS (.cjs) — credential dibaca dari Supabase tabel settings
+   Endpoint: POST /api/create-invoice
 ============================================================ */
-import crypto from 'crypto';
 
+const crypto = require('crypto');
+
+/* ============================================================
+   AMBIL CREDENTIAL DUITKU DARI SUPABASE
+============================================================ */
 async function getDuitkuConfig() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  console.log('[DEBUG] SUPABASE_URL:', SUPABASE_URL);
+  console.log('[DEBUG] KEY length:', SUPABASE_SERVICE_KEY?.length);
+  console.log('[DEBUG] KEY prefix:', SUPABASE_SERVICE_KEY?.slice(0, 15));
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     throw new Error('Server env vars missing');
   }
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/settings?select=key,value&key=in.(duitku_merchant_code,duitku_api_key,duitku_env)`,
-    {
-      headers: {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
-      }
-    }
-  );
+  const url = `${SUPABASE_URL}/rest/v1/settings?select=key,value&key=in.(duitku_merchant_code,duitku_api_key,duitku_env)`;
+  console.log('[DEBUG] Fetch URL:', url);
 
-  if (!res.ok) throw new Error('Gagal baca settings');
-  const rows = await res.json();
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+    }
+  });
+
+  console.log('[DEBUG] Response status:', res.status);
+  const responseText = await res.text();
+  console.log('[DEBUG] Response body:', responseText);
+
+  if (!res.ok) {
+    throw new Error(`Gagal baca settings: HTTP ${res.status} - ${responseText}`);
+  }
+
+  let rows;
+  try {
+    rows = JSON.parse(responseText);
+  } catch (e) {
+    throw new Error('Response bukan JSON: ' + responseText);
+  }
+
   const config = {};
   rows.forEach(r => { config[r.key] = r.value; });
 
@@ -37,15 +60,27 @@ async function getDuitkuConfig() {
   };
 }
 
-export default async function handler(req, res) {
+/* ============================================================
+   HANDLER
+============================================================ */
+module.exports = async (req, res) => {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Cuma terima POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
+    // Vercel otomatis parse JSON body buat CommonJS
     const {
       merchantOrderId,
       paymentAmount,
@@ -57,18 +92,23 @@ export default async function handler(req, res) {
       returnUrl,
       callbackUrl,
       expiryPeriod = 60
-    } = req.body;
+    } = req.body || {};
 
+    // Validasi
     if (!merchantOrderId || !paymentAmount || !email) {
       return res.status(400).json({ error: 'Data tidak lengkap' });
     }
 
+    // Ambil credential dari Supabase
     const { merchantCode, apiKey, env } = await getDuitkuConfig();
 
+    // Tentukan base URL Duitku
     const baseUrl = env === 'production'
       ? 'https://api-prod.duitku.com'
       : 'https://api-sandbox.duitku.com';
 
+    // Generate signature HMAC SHA256
+    // Formula: HMAC_SHA256(merchantCode + timestamp, apiKey)
     const timestamp = Date.now().toString();
     const stringToSign = merchantCode + timestamp;
     const signature = crypto
@@ -76,6 +116,12 @@ export default async function handler(req, res) {
       .update(stringToSign)
       .digest('hex');
 
+    console.log('[DEBUG] Timestamp:', timestamp);
+    console.log('[DEBUG] Signature:', signature);
+    console.log('[DEBUG] Merchant Code:', merchantCode);
+    console.log('[DEBUG] Env:', env);
+
+    // Build payload sesuai dokumentasi Duitku
     const payload = {
       paymentAmount: Math.round(paymentAmount),
       merchantOrderId,
@@ -99,6 +145,9 @@ export default async function handler(req, res) {
       expiryPeriod
     };
 
+    console.log('[DEBUG] Payload:', JSON.stringify(payload));
+
+    // POST ke Duitku API
     const duitkuRes = await fetch(`${baseUrl}/api/merchant/createInvoice`, {
       method: 'POST',
       headers: {
@@ -111,7 +160,9 @@ export default async function handler(req, res) {
     });
 
     const duitkuData = await duitkuRes.json();
+    console.log('[DEBUG] Duitku response:', JSON.stringify(duitkuData));
 
+    // Cek response
     if (!duitkuRes.ok || duitkuData.statusCode !== '00') {
       console.error('Duitku error:', duitkuData);
       return res.status(duitkuRes.status || 500).json({
@@ -120,6 +171,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // Return ke frontend
     return res.status(200).json({
       reference: duitkuData.reference,
       paymentUrl: duitkuData.paymentUrl,
@@ -128,7 +180,8 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error('Server error:', err);
+    console.error('[ERROR] Server error:', err.message);
+    console.error('[ERROR] Stack:', err.stack);
     return res.status(500).json({ error: err.message });
   }
-}
+};
