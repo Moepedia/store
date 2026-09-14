@@ -1,5 +1,5 @@
 /* ============================================================
-   STOREFRONT LOGIC — ES Module
+   STOREFRONT LOGIC — ES Module + Real Duitku
 ============================================================ */
 import { DB, initSupabase, rupiah, formatDate } from './data.js';
 
@@ -202,10 +202,7 @@ async function renderProducts() {
     products = [];
   }
 
-  if (!Array.isArray(products)) {
-    console.warn('[Store] products is not array:', products);
-    products = [];
-  }
+  if (!Array.isArray(products)) products = [];
 
   if (products.length === 0) {
     grid.innerHTML = '';
@@ -395,7 +392,7 @@ $('#checkoutBtn')?.addEventListener('click', () => {
   openModal('checkoutModal');
 });
 
-/* ---------- PAYMENT ---------- */
+/* ---------- PAYMENT (Real Duitku Pop) ---------- */
 $('#coPayBtn')?.addEventListener('click', async () => {
   const name = $('#coName').value.trim();
   const email = $('#coEmail').value.trim();
@@ -412,6 +409,7 @@ $('#coPayBtn')?.addEventListener('click', async () => {
   btn.textContent = 'Memproses...';
 
   try {
+    // 1. Simpan order ke Supabase
     const order = await DB.addOrder({
       customer: { name, email, phone },
       items: Cart.items.map(i => ({ product: i.product, price: i.price, qty: i.qty })),
@@ -420,44 +418,66 @@ $('#coPayBtn')?.addEventListener('click', async () => {
       paymentMethod: 'duitku'
     });
 
-    const payload = {
-      merchantOrderId: order.id,
-      paymentAmount: order.total,
-      productDetails: order.items.map(i => i.product).join(', '),
-      email: email,
-      customerVaName: name,
-      phoneNumber: phone,
-      items: order.items,
-      returnUrl: window.location.origin + '/order.html?order=' + order.id,
-      callbackUrl: window.location.origin + '/api/duitku-callback'
-    };
+    // 2. Create invoice via Vercel Function
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        merchantOrderId: order.id,
+        paymentAmount: order.total,
+        productDetails: order.items.map(i => i.product).join(', '),
+        email,
+        phoneNumber: phone,
+        customerVaName: name,
+        items: order.items,
+        returnUrl: window.location.origin + '/order.html?order=' + order.id,
+        callbackUrl: window.location.origin + '/api/duitku-callback',
+        expiryPeriod: 60
+      })
+    });
 
-    // ============================================================
-    // PRODUCTION: uncomment setelah backend siap
-    // ============================================================
-    // const res = await fetch('/api/create-payment', {
-    //   method: 'POST',
-    //   headers: {'Content-Type': 'application/json'},
-    //   body: JSON.stringify(payload)
-    // });
-    // const data = await res.json();
-    // if (data.paymentUrl) {
-    //   Cart.clear();
-    //   window.location.href = data.paymentUrl;
-    // } else throw new Error(data.error || 'Gagal');
+    const data = await res.json();
 
-    console.log('Order saved:', order);
-    showToast('Order ' + order.id + ' berhasil dibuat');
-    Cart.clear();
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-    closeModal('checkoutModal');
-    setTimeout(() => {
-      window.location.href = 'order.html?order=' + order.id;
-    }, 600);
+    if (!res.ok || !data.reference) {
+      throw new Error(data.error || 'Gagal create invoice');
+    }
+
+    console.log('Duitku reference:', data.reference);
+
+    // 3. Buka Duitku Pop
+    if (typeof checkout !== 'undefined' && checkout.process) {
+      checkout.process(data.reference, {
+        defaultLanguage: 'id',
+        successEvent: function (result) {
+          console.log('Success:', result);
+          Cart.clear();
+          window.location.href = 'order.html?order=' + order.id;
+        },
+        pendingEvent: function (result) {
+          console.log('Pending:', result);
+          alert('Pembayaran pending. Cek status di halaman pesanan.');
+          Cart.clear();
+          window.location.href = 'order.html?order=' + order.id;
+        },
+        errorEvent: function (result) {
+          console.log('Error:', result);
+          alert('Pembayaran gagal. Silakan coba lagi.');
+        },
+        closeEvent: function (result) {
+          console.log('Closed:', result);
+          showToast('Pembayaran dibatalkan');
+        }
+      });
+    } else {
+      // Fallback: redirect ke paymentUrl
+      Cart.clear();
+      window.location.href = data.paymentUrl;
+    }
+
   } catch (e) {
-    console.error('Order error:', e);
+    console.error('Checkout error:', e);
     showToast('Gagal: ' + (e.message || 'Unknown error'));
+  } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
   }
