@@ -1,5 +1,5 @@
 /* ============================================================
-   ADMIN LOGIC — Supabase Auth + RLS (ES Module)
+   ADMIN LOGIC — Supabase Auth + RLS + Duitku (ES Module)
 ============================================================ */
 import { DB, initSupabase, rupiah, formatDate } from './data.js';
 
@@ -527,7 +527,96 @@ async function renderSettingsPanel() {
 
   $('#sbUrl').value = cfg?.url || '';
   $('#sbKey').value = cfg?.key || '';
+
+  // Render Duitku panel
+  await renderDuitkuPanel();
 }
+
+/* ---------- DUITKU PANEL ---------- */
+async function renderDuitkuPanel() {
+  const config = await DB.getDuitkuConfig();
+  const codeInput = document.getElementById('duitkuMerchantCode');
+  const keyInput = document.getElementById('duitkuApiKey');
+  const envSelect = document.getElementById('duitkuEnv');
+
+  if (codeInput) codeInput.value = config?.merchantCode || '';
+  if (keyInput) keyInput.value = config?.apiKey || '';
+  if (envSelect) envSelect.value = config?.env || 'sandbox';
+}
+
+document.getElementById('saveDuitkuBtn')?.addEventListener('click', async () => {
+  const merchantCode = document.getElementById('duitkuMerchantCode').value.trim();
+  const apiKey = document.getElementById('duitkuApiKey').value.trim();
+  const env = document.getElementById('duitkuEnv').value;
+
+  if (!merchantCode || !apiKey) {
+    showError('duitkuError', 'Merchant Code dan API Key wajib diisi');
+    return;
+  }
+
+  const btn = document.getElementById('saveDuitkuBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    await DB.saveDuitkuConfig({ merchantCode, apiKey, env });
+    showSuccess('duitkuSuccess', 'Credential Duitku tersimpan di Supabase.');
+  } catch (e) {
+    showError('duitkuError', 'Gagal simpan: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
+
+document.getElementById('testDuitkuBtn')?.addEventListener('click', async () => {
+  const merchantCode = document.getElementById('duitkuMerchantCode').value.trim();
+  const apiKey = document.getElementById('duitkuApiKey').value.trim();
+  const env = document.getElementById('duitkuEnv').value;
+
+  if (!merchantCode || !apiKey) {
+    showError('duitkuError', 'Isi Merchant Code dan API Key dulu');
+    return;
+  }
+
+  const btn = document.getElementById('testDuitkuBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+
+  try {
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        merchantOrderId: 'TEST-' + Date.now(),
+        paymentAmount: 10000,
+        productDetails: 'Test Connection',
+        email: 'test@example.com',
+        phoneNumber: '08123456789',
+        customerVaName: 'Test User',
+        items: [{ product: 'Test', price: 10000, qty: 1 }],
+        returnUrl: window.location.origin,
+        callbackUrl: window.location.origin + '/api/duitku-callback',
+        expiryPeriod: 10
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.reference) {
+      showSuccess('duitkuSuccess', 'Koneksi berhasil! Reference: ' + data.reference);
+    } else {
+      showError('duitkuError', 'Gagal: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    showError('duitkuError', 'Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
 
 /* ---------- SAVE SUPABASE CONFIG ---------- */
 $('#saveSbBtn')?.addEventListener('click', async () => {
